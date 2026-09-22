@@ -1,0 +1,16 @@
+name: dsh-mux
+description: >-
+  Talk to other coding CLIs (claude, omp, pi, cursor, agy, command-code,
+  opencode) from inside this DSH GUI, and keep the thread.
+entry:
+  index: ./src/index.ts
+  config:
+    type: object
+    additionalProperties: false
+    properties:
+      timeoutMs: { type: number, default: 600000 }
+      outputCapBytes: { type: number, default: 1048576 }
+insert:
+  id: dsh-mux
+  name: @freepeak/dsh-mux
+  config: {}

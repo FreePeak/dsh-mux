@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "One Mux turn",
+    "output": "dsh-mux-turn-workflow.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "animation": "trace",
+    "viewBox": [780, 780],
+    "views": [
+      {
+        "id": "happy",
+        "label": "Happy path",
+        "focus": ["user", "page", "run", "cli", "store", "reply"],
+        "note": "Message in, stream out, session id saved."
+      },
+      {
+        "id": "fail",
+        "label": "Fail closed",
+        "focus": ["run", "missing", "timeout", "page"],
+        "note": "Missing bin and timeouts never hang."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "ui", "label": "Mux page" },
+    { "id": "host", "label": "Host" },
+    { "id": "cli", "label": "CLI" },
+    { "id": "except", "label": "Fail closed", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "compose", "label": "Compose", "fromCol": 0, "toCol": 1 },
+    { "id": "execute", "label": "Execute", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "settle", "label": "Settle", "fromCol": 4, "toCol": 5 }
+  ],
+  "mainPath": ["user", "page", "run", "cli", "store", "reply"],
+  "nodes": [
+    { "id": "user", "lane": "ui", "col": 0, "type": "external", "label": "You", "sublabel": "type" },
+    { "id": "page", "lane": "ui", "col": 1, "type": "frontend", "label": "Mux page", "sublabel": "Send / Stop" },
+    { "id": "reply", "lane": "ui", "col": 5, "type": "frontend", "label": "Thread", "sublabel": "live text" },
+    { "id": "run", "lane": "host", "col": 2, "type": "backend", "label": "runTurn", "sublabel": "spawn", "tag": "stdin prompt" },
+    { "id": "store", "lane": "host", "col": 4, "type": "database", "label": "Save", "sublabel": "session id" },
+    { "id": "cli", "lane": "cli", "col": 3, "type": "cloud", "label": "CLI", "sublabel": "-p / resume" },
+    { "id": "missing", "lane": "except", "col": 2, "type": "security", "label": "Missing", "sublabel": "no spawn" },
+    { "id": "timeout", "lane": "except", "col": 4, "type": "security", "label": "Timeout", "sublabel": "kill" }
+  ],
+  "edges": [
+    { "id": "type", "from": "user", "to": "page", "variant": "emphasis" },
+    { "id": "to-run", "from": "page", "to": "run", "label": "send", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "missing-check", "from": "run", "to": "missing", "label": "missing", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelDx": -40 },
+    { "id": "spawn", "from": "run", "to": "cli", "label": "spawn", "variant": "emphasis", "labelDx": 28 },
+    { "id": "cap", "from": "cli", "to": "timeout", "label": "timeout", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelDx": 36 },
+    { "id": "out", "from": "cli", "to": "store", "label": "stdout", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop", "labelDx": 24 },
+    { "id": "store-ui", "from": "store", "to": "reply", "variant": "emphasis" },
+    { "id": "missing-ui", "from": "missing", "to": "page", "label": "error", "variant": "dashed", "role": "return", "fromSide": "left", "toSide": "left", "route": "return-left", "labelDx": -20 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Direct input",
+      "items": [
+        "Type in Mux page or /ask",
+        "Prompt on stdin only",
+        "Stop cancels the turn"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Same thread",
+      "items": [
+        "First turn stores session id",
+        "Next turn resumes that id",
+        "One process per turn"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Ceilings",
+      "items": [
+        "1 MiB output cap",
+        "10 min timeout then kill",
+        "Missing CLI blocked"
+      ]
+    }
+  ]
+}

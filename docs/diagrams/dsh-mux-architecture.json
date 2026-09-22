@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "dsh-mux in this GUI",
+    "output": "dsh-mux-architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "viewBox": [1100, 640],
+    "views": [
+      {
+        "id": "human-path",
+        "label": "Human path",
+        "focus": ["user", "gui", "mux-page", "host", "cli"],
+        "note": "Open Mux, type, watch the CLI turn in this GUI."
+      },
+      {
+        "id": "model-path",
+        "label": "Model path",
+        "focus": ["gui", "agent", "host", "cli"],
+        "note": "Composer /mux and tool mux share the host."
+      },
+      {
+        "id": "memory",
+        "label": "Thread memory",
+        "focus": ["host", "threads", "cli"],
+        "note": "cliSessionId is what makes the next message continue."
+      }
+    ]
+  },
+  "components": [
+    { "id": "user", "type": "external", "label": "You", "sublabel": "browser", "pos": [40, 260], "size": [110, 56] },
+    { "id": "gui", "type": "frontend", "label": "DSH Web GUI", "sublabel": ":3081", "pos": [220, 260], "size": [140, 60], "brand": "deepseek", "tag": "this tool" },
+    { "id": "mux-page", "type": "frontend", "label": "Mux page", "sublabel": "sidebar", "pos": [420, 140], "size": [130, 56], "tag": "type here" },
+    { "id": "agent", "type": "backend", "label": "DSH agent", "sublabel": "composer", "pos": [420, 380], "size": [130, 56] },
+    { "id": "host", "type": "backend", "label": "dsh-mux host", "sublabel": "runTurn", "pos": [620, 260], "size": [150, 60], "tag": "bundle" },
+    { "id": "threads", "type": "database", "label": "Threads", "sublabel": "cliSessionId", "pos": [620, 100], "size": [130, 56] },
+    { "id": "cli", "type": "external", "label": "Coding CLIs", "sublabel": "claude omp pi …", "pos": [860, 260], "size": [160, 64], "tag": "one turn" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "This DSH session", "wraps": ["gui", "mux-page", "agent", "host", "threads"] }
+  ],
+  "connections": [
+    { "id": "you-gui", "from": "user", "to": "gui", "label": "open", "variant": "emphasis" },
+    { "id": "gui-page", "from": "gui", "to": "mux-page", "label": "sidebar", "fromSide": "top", "toSide": "left" },
+    { "id": "gui-agent", "from": "gui", "to": "agent", "label": "/ask", "fromSide": "bottom", "toSide": "left" },
+    { "id": "page-host", "from": "mux-page", "to": "host", "label": "send", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelDy": -18 },
+    { "id": "agent-host", "from": "agent", "to": "host", "label": "tool mux", "fromSide": "right", "toSide": "bottom", "labelDy": 24 },
+    { "id": "host-threads", "from": "host", "to": "threads", "label": "resume id", "fromSide": "top", "toSide": "bottom", "labelDx": 36 },
+    { "id": "host-cli", "from": "host", "to": "cli", "label": "-p turn", "variant": "emphasis" },
+    { "id": "cli-host", "from": "cli", "to": "host", "label": "stream", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[940, 360], [695, 360]], "labelDy": 28 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Inside this GUI",
+      "items": [
+        "Mux sidebar page on the web profile",
+        "No second Docker console",
+        "/mux and /ask share the host"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "External CLIs",
+      "items": [
+        "One process per turn",
+        "Resume by CLI session id",
+        "Not an embedded TUI"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Fail closed",
+      "items": [
+        "Missing CLI never spawns",
+        "Timeout kills the process",
+        "Optional feature-loop gate by tool name"
+      ]
+    }
+  ]
+}

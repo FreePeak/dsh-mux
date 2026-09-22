@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dsh-mux · sketchy UI</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #171d25;
+      --panel-2: #1d2530;
+      --line: #2a3544;
+      --text: #e7eef8;
+      --muted: #93a4b8;
+      --accent: #5786fe;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --bad: #f07178;
+      --chip: #243041;
+      --ink: #0b0f14;
+      --sketch: 1px solid color-mix(in srgb, var(--line) 80%, white 8%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1a2740 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px;
+    }
+    h1 { font-size: 18px; margin: 0 0 6px; letter-spacing: .2px; }
+    .sub { color: var(--muted); margin-bottom: 18px; max-width: 920px; }
+    .note {
+      display: inline-block;
+      border: 1px dashed #3b4a5f;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 12px;
+      max-width: 1100px;
+      border: var(--sketch);
+      border-radius: 16px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--panel) 92%, black);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .rail {
+      background: #121820;
+      border-right: 1px solid var(--line);
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .rail .ico {
+      width: 36px; height: 36px; border-radius: 10px;
+      border: 1px solid var(--line);
+      display: grid; place-items: center;
+      color: var(--muted); font-size: 11px; font-weight: 700;
+    }
+    .rail .ico.active {
+      background: color-mix(in srgb, var(--accent) 22%, transparent);
+      border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+      color: #dce8ff;
+    }
+    .main { display: grid; grid-template-rows: auto 1fr; min-height: 620px; }
+    .top {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #1a222d, #151b23);
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--chip);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: var(--text);
+      display: inline-flex; gap: 6px; align-items: center;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .dot.miss { background: var(--bad); }
+    .chip.miss { opacity: .55; text-decoration: line-through; }
+    .body {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 0;
+    }
+    .threads {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .threads h2 { font-size: 12px; color: var(--muted); margin: 0 0 4px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: default;
+      text-align: left;
+    }
+    .btn.primary {
+      background: color-mix(in srgb, var(--accent) 28%, var(--panel-2));
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    }
+    .thread {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: transparent;
+    }
+    .thread.active {
+      background: #202938;
+      border-color: #33455c;
+    }
+    .thread .t { font-size: 13px; }
+    .thread .m { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .chat {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      background: #12171f;
+      min-height: 0;
+    }
+    .turns {
+      padding: 16px 18px;
+      overflow: auto;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .bubble {
+      max-width: 720px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #1a222c;
+    }
+    .bubble.you {
+      align-self: flex-end;
+      background: color-mix(in srgb, var(--accent) 16%, #1a222c);
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+    }
+    .bubble .who { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .bubble .txt { white-space: pre-wrap; }
+    .bubble.live .txt::after {
+      content: "▍";
+      display: inline-block;
+      width: 8px; margin-left: 2px;
+      background: var(--accent);
+      animation: blink 1s steps(1) infinite;
+      vertical-align: -1px; height: 12px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .meta {
+      font-size: 11px; color: var(--muted); margin-top: 6px;
+    }
+    .composer {
+      border-top: 1px solid var(--line);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      background: #151b24;
+    }
+    textarea {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #0f141b;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
+    .composer .btn { min-width: 84px; text-align: center; }
+    .legend {
+      margin-top: 18px;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .card {
+      border: 1px dashed #3a4a60;
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .card h3 { margin: 0 0 6px; font-size: 13px; }
+    .card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .sketch-label {
+      position: absolute;
+      transform: rotate(-2deg);
+      font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #9eb6d8;
+      opacity: .85;
+      border-bottom: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+      padding-bottom: 2px;
+    }
+    .wrap { position: relative; }
+    @media (max-width: 900px) {
+      .body { grid-template-columns: 1fr; }
+      .legend { grid-template-columns: 1fr; }
+      .threads { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <h1>dsh-mux · sketchy UI (not the real page yet)</h1>
+  <p class="sub">
+    Target experience inside <strong>this</strong> DSH GUI: pick a coding CLI, type like a chat,
+    watch the turn stream, send the next message into the <em>same</em> CLI session.
+    Not HarnessRouter’s separate console. Not an embedded terminal TUI.
+  </p>
+  <div class="note">wireframe · dark · for plan review</div>
+
+  <div class="wrap">
+    <div class="shell" aria-label="Mux page wireframe">
+      <aside class="rail" aria-label="DSH sidebar">
+        <div class="ico">Chat</div>
+        <div class="ico">Plug</div>
+        <div class="ico active">Mux</div>
+        <div class="ico">Set</div>
+      </aside>
+      <section class="main">
+        <div class="top" aria-label="CLI discovery strip">
+          <span class="chip"><span class="dot"></span>claude</span>
+          <span class="chip"><span class="dot"></span>omp</span>
+          <span class="chip"><span class="dot"></span>pi</span>
+          <span class="chip"><span class="dot"></span>cursor</span>
+          <span class="chip"><span class="dot"></span>agy</span>
+          <span class="chip"><span class="dot"></span>command-code</span>
+          <span class="chip miss"><span class="dot miss"></span>opencode</span>
+        </div>
+        <div class="body">
+          <aside class="threads">
+            <h2>Threads</h2>
+            <button class="btn primary" type="button">+ New thread</button>
+            <div class="thread active">
+              <div class="t">claude · fix login flaky</div>
+              <div class="m">2 turns · resumed sess_ab12</div>
+            </div>
+            <div class="thread">
+              <div class="t">omp · explain routing</div>
+              <div class="m">1 turn · settled</div>
+            </div>
+            <div class="thread">
+              <div class="t">cursor · draft PR body</div>
+              <div class="m">stopped</div>
+            </div>
+          </aside>
+          <section class="chat">
+            <div class="turns">
+              <div class="bubble you">
+                <div class="who">you → claude</div>
+                <div class="txt">The login test flakes on CI. Find the root cause and propose the smallest fix.</div>
+              </div>
+              <div class="bubble">
+                <div class="who">claude · turn 1 · 12.4s · exit 0</div>
+                <div class="txt">I read the flaky assertion in auth.spec.ts. Race on session cookie write before redirect. Smallest fix: await cookie flush in beforeEach.</div>
+                <div class="meta">session sess_ab12 saved for resume</div>
+              </div>
+              <div class="bubble you">
+                <div class="who">you → same thread</div>
+                <div class="txt">Apply that one-line fix and show the diff.</div>
+              </div>
+              <div class="bubble live">
+                <div class="who">claude · turn 2 · streaming…</div>
+                <div class="txt">Resuming sess_ab12…
+Editing auth.spec.ts…</div>
+              </div>
+            </div>
+            <div class="composer">
+              <textarea placeholder="Message this CLI thread…  (/ask claude … from composer also works)"></textarea>
+              <button class="btn" type="button">Stop</button>
+              <button class="btn primary" type="button">Send</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="card">
+      <h3>Direct input</h3>
+      <p>Text box + Send is the interaction surface. Same path as <code>/ask claude …</code> in the DSH composer.</p>
+    </div>
+    <div class="card">
+      <h3>Direct view</h3>
+      <p>Turns stay on this page while streaming. Optional plugin notice also lands in the main chat transcript.</p>
+    </div>
+    <div class="card">
+      <h3>Not in v1</h3>
+      <p>No raw PTY of the CLI TUI, no multi-CLI fanout, no HarnessRouter Docker console, no long-lived rpc pipe (except later for omp/pi).</p>
+    </div>
+  </div>
+</body>
+</html>

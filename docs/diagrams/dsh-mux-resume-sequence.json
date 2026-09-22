@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Two turns, one CLI session",
+    "output": "dsh-mux-resume-sequence.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "animation": "trace",
+    "viewBox": [860, 900],
+    "views": [
+      {
+        "id": "first",
+        "label": "First message",
+        "focus": ["you", "page", "host", "cli"],
+        "note": "CLI returns a session id in its trailer."
+      },
+      {
+        "id": "second",
+        "label": "Follow-up",
+        "focus": ["you", "page", "host", "store", "cli"],
+        "note": "Stored id is passed to --resume."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "you", "type": "external", "label": "You", "sublabel": "Mux page" },
+    { "id": "page", "type": "frontend", "label": "Mux UI", "sublabel": "sidebar" },
+    { "id": "host", "type": "backend", "label": "dsh-mux", "sublabel": "host" },
+    { "id": "store", "type": "database", "label": "Threads", "sublabel": "JSON" },
+    { "id": "cli", "type": "cloud", "label": "CLI", "sublabel": "claude…" }
+  ],
+  "segments": [
+    { "from": 150, "to": 360, "label": "Turn 1 · new" },
+    { "from": 380, "to": 700, "label": "Turn 2 · resume" }
+  ],
+  "messages": [
+    { "from": "you", "to": "page", "y": 180, "label": "New · claude · say hi", "variant": "emphasis" },
+    { "from": "page", "to": "host", "y": 220, "label": "send(cli, prompt)", "variant": "emphasis" },
+    { "from": "host", "to": "store", "y": 260, "label": "create thread" },
+    { "from": "host", "to": "cli", "y": 300, "label": "spawn -p stdin", "variant": "emphasis" },
+    { "from": "cli", "to": "host", "y": 340, "label": "stream + session_id", "variant": "return" },
+    { "from": "host", "to": "store", "y": 400, "label": "save cliSessionId" },
+    { "from": "host", "to": "page", "y": 440, "label": "settled text", "variant": "return" },
+    { "from": "you", "to": "page", "y": 480, "label": "list the files", "variant": "emphasis" },
+    { "from": "page", "to": "host", "y": 520, "label": "send(threadId)", "variant": "emphasis" },
+    { "from": "host", "to": "store", "y": 560, "label": "load session id" },
+    { "from": "store", "to": "host", "y": 600, "label": "sess_abc", "variant": "return" },
+    { "from": "host", "to": "cli", "y": 640, "label": "--resume sess_abc -p", "variant": "emphasis" },
+    { "from": "cli", "to": "host", "y": 680, "label": "continued answer", "variant": "return" },
+    { "from": "host", "to": "page", "y": 720, "label": "append turn", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "page", "from": 174, "to": 450, "type": "frontend" },
+    { "participant": "host", "from": 214, "to": 450, "type": "backend" },
+    { "participant": "cli", "from": 294, "to": 350, "type": "cloud" },
+    { "participant": "page", "from": 474, "to": 730, "type": "frontend" },
+    { "participant": "host", "from": 514, "to": 730, "type": "backend" },
+    { "participant": "cli", "from": 634, "to": 690, "type": "cloud" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Direct, not TTY",
+      "items": [
+        "Input is the Mux text box",
+        "Output streams in-thread",
+        "Not the CLI TUI"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Resume contract",
+      "items": [
+        "One process per turn",
+        "Session id is continuity",
+        "rpc later for omp/pi only"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Vs HarnessRouter",
+      "items": [
+        "No second console",
+        "No UHP shim",
+        "Inside this DSH GUI"
+      ]
+    }
+  ]
+}
