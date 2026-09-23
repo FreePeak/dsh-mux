@@ -215,7 +215,7 @@ See `src/plugin.ts` for the live schema.
 
 ```bash
 npm install
-npm test          # 28 tests, offline, offline
+npm test          # 28 tests, offline
 npm run build     # tsdown → lib/*.mjs
 ```
 
@@ -223,6 +223,16 @@ npm run build     # tsdown → lib/*.mjs
 | --- | --- |
 | `test` | `node --experimental-strip-types --test test/*.test.ts` |
 | `build` | Bundle `src/index.ts` + `src/remote.ts` into `lib/` |
+
+### CI
+
+Every push and pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+`npm ci` → unit tests → build → artifact gates. While the repository is
+**private**, jobs run on a self-hosted macOS runner labelled `dsh-mux`
+(`~/actions-runners/dsh-mux`, launchd service) so they do not burn the org's
+limited hosted Actions minutes. If the repository is made public, switch
+`runs-on` back to `ubuntu-latest` **before** opening it — fork PR code must
+never execute on a maintainer machine.
 
 ### Project layout
 

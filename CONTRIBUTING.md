@@ -81,12 +81,28 @@ python3 scripts/drive.py "http://127.0.0.1:3101/?token=..."
 
 Needs Playwright (`pip install playwright && playwright install chromium`).
 
+## Continuous integration
+
+CI is GitHub Actions (`.github/workflows/ci.yml`). The job installs with
+`npm ci`, runs the full suite, builds the host bundle, and re-runs the artifact
+gates. While this repository is private it targets the self-hosted runner
+labelled `dsh-mux` (see the long comment at the top of the workflow). Maintainers
+restart that runner with:
+
+```bash
+cd ~/actions-runners/dsh-mux && ./svc.sh status   # or stop / start
+```
+
+Contributors do not need the runner — `npm test` and `npm run build` locally are
+the same gates.
+
 ## Pull requests
 
 - One concern per PR; small diffs beat clever ones.
 - Update `CHANGELOG.md` under **Unreleased** when behaviour changes.
 - Do not add runtime dependencies without an explicit justification in the PR.
 - Fill out the pull request template.
+- CI must be green before merge.
 
 ## Code of conduct
 

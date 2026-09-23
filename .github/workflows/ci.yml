@@ -3,9 +3,33 @@
 # Node 22 is required (`node --experimental-strip-types`). The suite is offline
 # and does not need real CLI binaries or a harness profile.
 #
-# Repository is currently private — hosted Actions minutes are limited. Prefer
-# small jobs. If this repo is made public, keep runs-on as a GitHub-hosted label
-# (never self-hosted) so fork PRs cannot execute on a maintainer machine.
+# ---------------------------------------------------------------------------
+# RUNNER: these jobs target a SELF-HOSTED runner, not a GitHub-hosted one.
+#
+# Why: GitHub Free gives an organization only a small monthly Actions allowance
+# for *private* repositories, and this repository is private. Hosted jobs were
+# therefore never scheduled at all — they failed in about three seconds with
+# zero steps executed and an empty `runner_name`, which is GitHub refusing to
+# provision a machine, not the workflow failing. The same pattern was confirmed
+# on FreePeak/dsh-feature-loop.
+#
+# The runner is registered at ~/actions-runners/dsh-mux with the custom label
+# `dsh-mux`, installed as a launchd service so it survives reboots. To inspect
+# or restart it:
+#
+#   cd ~/actions-runners/dsh-mux
+#   ./svc.sh status      # is it running
+#   ./svc.sh stop        # pause it
+#   ./svc.sh start       # resume it
+#   ./svc.sh uninstall   # deregister and remove the service
+#
+# !! IF THIS REPOSITORY IS EVER MADE PUBLIC, CHANGE `runs-on` BACK TO
+# !! `ubuntu-latest` BEFORE YOU DO. On a public repository anyone can open a
+# !! pull request, and a pull-request job on a self-hosted runner executes
+# !! their code on your machine, with your files and credentials in reach.
+# !! Public repositories also get unlimited free hosted minutes, so the limit
+# !! this runner exists to dodge stops applying the moment it is public.
+# ---------------------------------------------------------------------------
 
 name: CI
 
@@ -25,22 +49,36 @@ permissions:
 
 jobs:
   test:
-    name: test (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    name: test (self-hosted, Node ${{ matrix.node }})
+    # The custom label, not bare `self-hosted`: it targets this repository's
+    # runner specifically, so a runner added later for another project can never
+    # pick this job up by accident.
+    runs-on: [self-hosted, dsh-mux]
+    # A self-hosted runner is a finite resource — one machine, not an elastic
+    # pool. A hung job would occupy it indefinitely, so cap both.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         node: ["22"]
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+
+      # .npmrc sets auto-install-peers=false so unpublished harness peers do not
+      # abort the install. Only schemastery + tsdown/typescript/@types/node land.
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Unit tests
         run: npm test
+
       - name: Build host bundle
         run: npm run build
+
       - name: Re-run artifact gates after build
         run: node --experimental-strip-types --test test/artifacts.test.ts

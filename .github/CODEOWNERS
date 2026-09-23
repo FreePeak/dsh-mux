@@ -1,0 +1,5 @@
+# Default owner for everything in this repository.
+* @linhdmn
+
+# CI and runner configuration — keep eyes on self-hosted changes.
+/.github/ @linhdmn
