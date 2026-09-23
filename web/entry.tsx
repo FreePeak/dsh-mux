@@ -142,6 +142,24 @@ export function turnsToMessages(thread: MuxThread | null): ThreadMessageLike[] {
   } as ThreadMessageLike))
 }
 
+/** Icons are inline SVG (no emoji / text glyphs) and inherit currentColor. */
+function Icon({ name, size = 14 }: { name: 'copy' | 'check' | 'chevron' | 'close' | 'plus' | 'arrowDown' | 'link', size?: number }): React.ReactElement {
+  const paths: Record<string, React.ReactElement> = {
+    copy: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+    check: <path d="M20 6 9 17l-5-5" />,
+    chevron: <path d="m6 9 6 6 6-6" />,
+    close: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    arrowDown: <><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></>,
+    link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {paths[name]}
+    </svg>
+  )
+}
+
 /**
  * One message bubble. Uses the children render fn for Parts (the current
  * API) so each text part becomes a real <p>, and an ActionBar so a CLI answer
@@ -171,9 +189,10 @@ function MuxMessage({ role }: { role: 'user' | 'assistant' }): React.ReactElemen
             copiedDuration={2000}
             className="mux-action"
             title="Copy answer"
+            aria-label="Copy answer"
           >
-            <span className="mux-action-copy" aria-hidden="true">Copy</span>
-            <span className="mux-action-done" aria-hidden="true">Copied</span>
+            <span className="mux-action-copy" aria-hidden="true"><Icon name="copy" /></span>
+            <span className="mux-action-done" aria-hidden="true"><Icon name="check" size={12} />Copied</span>
           </ActionBarPrimitive.Copy>
         </ActionBarPrimitive.Root>
       )}
@@ -352,30 +371,50 @@ function MuxPanel({ host, ready }: {
         <div data-mux-threads="">
           <div data-mux-threads-head="">
             <strong>Threads</strong>
-            <button type="button" data-mux-new="" onClick={newThread}>New</button>
+            <button
+              type="button"
+              data-mux-new=""
+              onClick={newThread}
+              aria-label="Start a new thread"
+            >
+              <Icon name="plus" size={13} />
+              New
+            </button>
           </div>
           {threads.map(item => (
             <div
               key={item.id}
               data-mux-thread=""
               data-active={String(item.id === selectedId)}
+              role="button"
+              tabIndex={0}
+              aria-current={item.id === selectedId ? 'true' : undefined}
               onClick={() => setSelectedId(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setSelectedId(item.id)
+                }
+              }}
             >
               <div data-mux-thread-title="">
                 {CLIS.find(cli => cli.id === item.cli)?.label ?? item.cli}
                 {item.cliSessionId !== undefined && (
-                  <span data-mux-resume="" title={`resumes ${item.cliSessionId}`}>●</span>
+                  <span data-mux-resume="" title={`Resumes CLI session ${item.cliSessionId}`}>
+                    <Icon name="link" size={11} />
+                  </span>
                 )}
                 <button
                   type="button"
                   data-mux-delete=""
                   title="Delete thread (CLI session files are kept)"
+                  aria-label="Delete thread"
                   onClick={(event) => {
                     event.stopPropagation()
                     void deleteThread(item.id)
                   }}
                 >
-                  ×
+                  <Icon name="close" size={13} />
                 </button>
               </div>
               <div data-mux-thread-preview="">{lastPreview(item)}</div>
@@ -411,7 +450,7 @@ function MuxPanel({ host, ready }: {
                   className="mux-scroll-bottom"
                   aria-label="Scroll to latest"
                 >
-                  ↓
+                  <Icon name="arrowDown" size={14} />
                 </ThreadPrimitive.ScrollToBottom>
                 {/* Registers composer height with the auto-scroll system so the
                     last message is never hidden behind it. */}
@@ -446,7 +485,7 @@ function MuxPanel({ host, ready }: {
                         disabled={busy || !installedOf(tool) || !enabledOf(tool)}
                         aria-label="Send message"
                       >
-                        {busy ? 'Running…' : 'Send'}
+                        {busy ? 'Running…' : <><Icon name="arrowDown" size={13} />Send</>}
                       </ComposerPrimitive.Send>
                     </ComposerPrimitive.Root>
                   </div>
