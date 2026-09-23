@@ -101,9 +101,9 @@ export class ThreadStore {
     return readFile(this.file).threads.find(thread => thread.id === id)
   }
 
-  /** Every thread, newest first. */
+  /** Every thread, newest first (ties keep insertion order — two creates in the same millisecond still sort newest-first). */
   list(): MuxThread[] {
-    return [...readFile(this.file).threads].sort((a, b) => b.createdAt - a.createdAt)
+    return [...readFile(this.file).threads].reverse().sort((a, b) => b.createdAt - a.createdAt)
   }
 
   /**

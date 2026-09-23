@@ -138,9 +138,16 @@ export function turnsToMessages(thread: MuxThread | null): ThreadMessageLike[] {
   } as ThreadMessageLike))
 }
 
-/** One message bubble (role-agnostic body; error styling via wrapper). */
-function MuxMessage(): React.ReactElement {
-  return React.createElement(MessagePrimitive.Root, { 'data-mux-turn': '' },
+/**
+ * One message bubble (role-agnostic body; error styling via wrapper).
+ *
+ * aui 0.15's ThreadMessages resolves `components.UserMessage` /
+ * `components.AssistantMessage` — passing the old `{ User, Assistant }` keys
+ * makes getComponent() return undefined and the panel dies with React #130 on
+ * the first message render.
+ */
+function MuxMessage({ role }: { role: 'user' | 'assistant' }): React.ReactElement {
+  return React.createElement(MessagePrimitive.Root, { 'data-mux-turn': '', 'data-role': role },
     React.createElement(MessagePrimitive.Parts))
 }
 
@@ -351,7 +358,10 @@ function MuxPanel({ host, ready }: {
                   </div>
                 )}
                 <ThreadPrimitive.Viewport>
-                  <ThreadPrimitive.Messages components={{ User: MuxMessage, Assistant: MuxMessage }} />
+                  <ThreadPrimitive.Messages components={{
+                    UserMessage: () => MuxMessage({ role: 'user' }),
+                    AssistantMessage: () => MuxMessage({ role: 'assistant' }),
+                  }} />
                 </ThreadPrimitive.Viewport>
               </div>
             </ThreadPrimitive.Root>
