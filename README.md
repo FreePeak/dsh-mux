@@ -15,7 +15,8 @@
 ![Version](https://img.shields.io/badge/version-0.1.0-informational)
 ![DSH Plugin](https://img.shields.io/badge/dsh-plugin-external-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-25%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen)
+![Validated](https://img.shields.io/badge/validated-docker%20container-2ea44f)
 
 ---
 
@@ -62,8 +63,8 @@ future edits to the bundle are picked up without a full restart).
 
 ### First run
 
-1. Open **http://127.0.0.1:3081/mux**.
-2. Click a CLI in the discovery strip (installed ones are listed; missing ones are greyed out).
+1. Open the DSH web GUI (`dsh web` prints `http://127.0.0.1:3081/?token=...`).
+2. Click **Mux** in the sidebar — the discovery strip shows which CLIs are installed.
 3. Type a message and hit **Send**. The CLI runs non-interactively (accept mode) and streams its reply into the panel and into the DSH transcript.
 4. Type a follow-up — it resumes the same CLI session id rather than starting fresh.
 
@@ -73,6 +74,44 @@ From the composer you can also run:
 /mux                  # open the Mux panel
 /mux claude say hi    # start a thread and send the result to the transcript
 /ask omp explain this # same thing, shorter name
+```
+
+## Run in Docker
+
+A self-contained container boots DSH with dsh-mux installed, including a
+**fixture `claude` CLI** (`docker/fixtures/claude`) that validates the full
+spawn/stdin/session-id/resume pipeline without any model credentials:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build -d
+docker compose -f docker/docker-compose.yml logs -f   # the `dsh web:` line has the token
+```
+
+Open `http://127.0.0.1:3101/?token=...` (host loopback only — the harness
+refuses a wildcard bind, so an in-container relay forwards to its private
+`127.0.0.1:3099`). `FORCE_REINIT=1 docker compose ... up -d` re-seeds the
+profile from the image; `down -v` resets everything.
+
+## Validation (container)
+
+`scripts/drive.py` walks the container end-to-end over the harness's own
+mounted remote wire (workspace → session → `commands.execute` → panel) and
+captures:
+
+| Screenshot | Proves |
+| --- | --- |
+| [01-boot-sidebar-mux-entry](docs/screenshots/01-boot-sidebar-mux-entry.png) | Container boots; client bundle loads; **Mux** sidebar entry renders |
+| [02-command-execution-ok](docs/screenshots/02-command-execution-ok.png) | `/mux` + `/ask claude` execute on the host; fixture CLI turn returns `mux · claude · exit 0` |
+| [03-mux-panel-discovery-strip](docs/screenshots/03-mux-panel-discovery-strip.png) | Panel + discovery strip over `remote.mux.discover()` (installed → green dot) |
+| [04-mux-panel-thread-turns](docs/screenshots/04-mux-panel-thread-turns.png) | Stored thread shows prompt/answer turns |
+
+The full transcript of the run (including the **resume proof** — a second send
+on the same thread passes `cliSessionId` to `--resume` and the fixture echoes it
+back) is in [docs/screenshots/drive.log](docs/screenshots/drive.log):
+
+```bash
+python3 scripts/drive.py "http://127.0.0.1:3101/?token=..."   # needs brew playwright
+python3 scripts/shot.py  "http://127.0.0.1:3101/?token=..."    # composer/onboarding walkthrough
 ```
 
 ## Supported CLIs
@@ -162,30 +201,33 @@ temporary `PATH`.
 
 ```text
 dsh-mux/
-├── package.json         # dsh.bundle + dsh.client flags
-├── cordis.patch.yml     # plugin row consumed by the profile
-├── README.md
-├── LICENSE
+├── package.json         # dsh.bundle + dsh.client flags, exports (./, ./remote, ./client)
+├── cordis.patch.yml     # two rows: host plugin + host remote service
+├── client.js            # browser half: Mux sidebar entry + panel + remote contribution
+├── docker/
+│   ├── Dockerfile       # builds the plugin, provisions a dsh-mux profile on npm DSH
+│   ├── entrypoint.sh    # profile seed + loopback relay (harness refuses wildcard binds)
+│   ├── docker-compose.yml
+│   └── fixtures/claude  # fixture CLI: stdin prompt, session id, --resume ack
+├── scripts/
+│   ├── drive.py         # container validation: workspace→session→commands→panel+shots
+│   └── shot.py          # composer/onboarding walkthrough shots
 ├── src/
 │   ├── adapters.ts      # seven CLI specs: argv, resume flags, session-id parser
-│   ├── discovery.ts     # PATH availability for the sidebar strip
+│   ├── discovery.ts     # PATH availability for the strip
 │   ├── run.ts           # spawn one turn, stream, cap, kill
 │   ├── threads.ts       # thread store (JSON, per profile dir)
 │   ├── commands.ts      # /mux + /ask parser (shared)
 │   ├── plugin.ts        # host: tool mux, /mux, /ask, thread store
-│   ├── client/index.ts  # Mux sidebar entry + main panel (browser bundle)
-│   └── index.ts         # cordis entry point
-├── test/
-│   ├── adapters.test.ts
-│   ├── commands.test.ts
-│   ├── discovery.test.ts
-│   ├── run.test.ts
-│   └── threads.test.ts
-└── docs/
-    ├── PRD.md           # detailed product plan
-    ├── diagrams/        # architecture / workflow / resume (HTML + JSON)
-    └── ui/
-        └── mux-sketch.html  # panel wireframe
+│   ├── remote.ts        # host remote: discover/listThreads/send over ctx.remote.mux
+│   └── index.ts         # cordis entry point (named exports only — no default)
+├── test/                # 28 tests: adapters, commands, discovery, run, threads, artifacts
+├── docs/
+│   ├── PRD.md           # detailed product plan
+│   ├── diagrams/        # architecture / workflow / resume (HTML + JSON)
+│   ├── screenshots/     # container validation captures + drive.log
+│   └── ui/mux-sketch.html
+└── tsconfig.json
 ```
 
 ## Feature-loop integration

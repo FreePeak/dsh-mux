@@ -1,0 +1,23 @@
+#!/bin/sh
+# TEST FIXTURE standing in for the `claude` CLI.
+#
+# Validates the mux pipeline inside the container: stdin prompt, non-interactive
+# flags, exit 0, and a parseable session id — then proves the resume turn by
+# echoing back the --resume id. It never talks to a model. Swap for the real
+# `@anthropic-ai/claude-code` for production use.
+resume_id=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --resume) resume_id="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+prompt=$(cat)
+if [ -n "$resume_id" ]; then
+  echo "fixture claude resumed session ${resume_id}"
+  echo "{\"type\":\"result\",\"session_id\":\"${resume_id}\"}"
+else
+  sid="sess_fixture_$(date +%s)"
+  echo "fixture claude received: ${prompt}"
+  echo "{\"type\":\"result\",\"session_id\":\"${sid}\"}"
+fi

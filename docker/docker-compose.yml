@@ -1,0 +1,62 @@
+# Compose for the containerised dsh-mux.
+#
+#   cd dsh-mux
+#   docker compose -f docker/docker-compose.yml up --build -d
+#   docker compose -f docker/docker-compose.yml logs -f   # the `dsh web:` line has the token
+#
+# Then open http://127.0.0.1:3101/?token=...
+#
+# Host port 3101 maps to the container's relay port 8099, which forwards to the
+# UI on 127.0.0.1:3099 inside the container (the harness refuses a wildcard bind,
+# so the relay exists — see docker/entrypoint.sh). 3081 is this developer's own
+# GUI; 3090/3092/3097/3099 belong to feature-loop or local dsh — 3101 is free.
+
+services:
+  dsh-mux:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: dsh-mux:local
+    container_name: dsh-mux
+
+    ports:
+      # Bound to the HOST LOOPBACK only: the UI is reachable from this machine
+      # and nowhere else — the same posture as running `dsh` natively.
+      - "127.0.0.1:${DSH_HOST_PORT:-3101}:8099"
+
+    environment:
+      # Optional gateway; /mux, /ask and panel sends never need it, only model
+      # calls do. The entrypoint warns when it is unset.
+      ONEGW_API_KEY: "${ONEGW_API_KEY:-}"
+      ONEGW_BASE_URL: "${ONEGW_BASE_URL:-http://host.docker.internal:8080/v1}"
+      DSH_PORT: "3099"
+      DSH_INTERNAL_PORT: "8099"
+      DSH_PROFILE: "dsh-mux"
+      FORCE_REINIT: "${FORCE_REINIT:-0}"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      # Persists the profile, threads and sessions across restarts.
+      # Clean start: docker compose -f docker/docker-compose.yml down -v
+      - dsh-mux-data:/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      # Probes the relay port — the path Docker publishes.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8099/').then(r=>process.exit(r.status===401||r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  # Pinned so the volume is exactly `dsh-mux-data`, not `<project>_dsh-mux-data`.
+  dsh-mux-data:
+    name: dsh-mux-data

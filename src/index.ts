@@ -19,7 +19,6 @@ export { ThreadStore, hasStore } from './threads.ts'
 export type { MuxThread, MuxTurn } from './threads.ts'
 export { knownClis, parseMuxInput } from './commands.ts'
 export type { MuxRequest } from './commands.ts'
-
-import { apply } from './plugin.ts'
-
-export default apply
+// No `export default`: cordis's unwrapExports prefers `default` and would
+// hand apply's bare function to the loader, dropping the `inject` namespace
+// export (empty inject = every service access throws). See plugin.ts.

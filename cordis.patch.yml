@@ -1,16 +1,16 @@
-name: dsh-mux
-description: >-
-  Talk to other coding CLIs (claude, omp, pi, cursor, agy, command-code,
-  opencode) from inside this DSH GUI, and keep the thread.
-entry:
-  index: ./src/index.ts
-  config:
-    type: object
-    additionalProperties: false
-    properties:
-      timeoutMs: { type: number, default: 600000 }
-      outputCapBytes: { type: number, default: 1048576 }
-insert:
-  id: dsh-mux
-  name: @freepeak/dsh-mux
-  config: {}
+# The dsh-mux plugin's patch layer (feature-loop/fixture row format).
+#
+# Row 1: the host plugin — tool `mux`, commands `/mux` + `/ask`, thread store.
+# Row 2: the host remote service — `ctx.remote.mux.*` for the browser page.
+#
+# With no `config:` the rows load with defaults (10 min turn timeout,
+# 1 MiB output cap, workspace = host cwd). Override per field, e.g.
+#     config:
+#       timeoutMs: 300000
+#       workspace: /work
+
+- insert:
+    - id: dsh-mux
+      name: '@freepeak/dsh-mux'
+    - id: dsh-mux-remote
+      name: '@freepeak/dsh-mux/remote'

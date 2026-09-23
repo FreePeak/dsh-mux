@@ -1,16 +1,22 @@
 /**
  * The dsh-mux host plugin: tool `mux`, commands `/mux` + `/ask`, and the
- * remote the Mux page drives.
+ * thread store both share with the host remote (`./remote`).
  *
  * The harness loads this module by package name from a profile's
  * `cordis.patch.yml` and calls `apply(ctx, config)`.
+ *
+ * Command results render directly in the composer (`CommandResult` is the
+ * dispatching UI's render), so handlers return their text and never inject a
+ * second copy into the transcript.
  *
  * @module dsh-mux/plugin
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
-import { ADAPTERS, adapterFor, firstTurnArgv, resumeTurnArgv } from './adapters.ts'
+import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView } from '@deepseek-ai/dsh-tools'
+import { ADAPTERS, ADAPTER_IDS, adapterFor, firstTurnArgv, resumeTurnArgv } from './adapters.ts'
 import { binOnPath, discover, pathEntries } from './discovery.ts'
 import { runTurn } from './run.ts'
 import type { RunTurnResult } from './run.ts'
@@ -20,8 +26,8 @@ import { parseMuxInput } from './commands.ts'
 /** The name cordis and the harness log address this plugin by. */
 export const name = 'dsh-mux'
 
-/** The services this plugin reads. `profileContext` carries the data dir. */
-export const inject = ['agents', 'commands', 'tools']
+/** `commands`/`tools` register here; `profileContext` carries the data dir. */
+export const inject = ['commands', 'tools', 'profileContext']
 
 /** Deployment configuration, as it appears under the patch row's `config:`. */
 export interface Config {
@@ -29,6 +35,8 @@ export interface Config {
   timeoutMs?: number
   /** Combined stdout+stderr cap in bytes. Defaults to 1 MiB. */
   outputCapBytes?: number
+  /** Workspace for panel sends (no session context); defaults to the host cwd. */
+  workspace?: string
 }
 
 /** Header line the tool and transcript prefix every settled turn with. */
@@ -37,18 +45,30 @@ export function turnHeader(cli: string, durationMs: number, exit: number | null)
   return `mux · ${cli} · ${seconds}s · exit ${exit === null ? '—' : exit}`
 }
 
-interface TurnServices {
+/** The shared turn dependencies: store plus config ceilings. */
+export interface TurnServices {
   readonly store: ThreadStore
   readonly timeoutMs: number | undefined
   readonly outputCapBytes: number | undefined
 }
 
-function storeDir(ctx: Context): string {
-  // profileContext.dir is the profile dir (confirmed in app-boot); the mux
-  // threads live beside it so a profile reinstall never wipes them silently.
+/**
+ * The thread store lives beside the profile dir (confirmed in app-boot), so a
+ * profile reinstall never wipes it silently.
+ * @param ctx - a host context carrying `profileContext`.
+ */
+export function storeDir(ctx: Context): string {
   const profile = (ctx as unknown as { profileContext?: { dir?: string } }).profileContext
-  const base = profile?.dir ?? process.cwd()
-  return join(base, 'mux')
+  return join(profile?.dir ?? process.cwd(), 'mux')
+}
+
+/** Turn services for one host context and config (shared by apply + remote). */
+export function turnServices(ctx: Context, config: Config): TurnServices {
+  return {
+    store: new ThreadStore(storeDir(ctx)),
+    timeoutMs: config.timeoutMs,
+    outputCapBytes: config.outputCapBytes,
+  }
 }
 
 /**
@@ -113,86 +133,70 @@ export async function sendTurn(
     return { header: turnHeader(spec.id, result.durationMs, result.exitCode), text, threadId }
   }
   const sessionId = spec.parseSessionId(result.text)
-  const stored = services.store.append(
+  services.store.append(
     threadId,
     { role: 'answer', text: result.text, at: Date.now() },
     sessionId,
   )
-  const resumed = sessionId !== undefined && stored?.cliSessionId !== undefined
   const text = result.truncated
     ? `${result.text}\n(output truncated at the 1 MiB cap)`
     : result.text
   return {
-    header: turnHeader(spec.id, result.durationMs, result.exitCode)
-      + (resumed ? '' : ' · single-turn (no session id)'),
+    header: turnHeader(spec.id, result.durationMs, result.exitCode),
     text,
     threadId,
   }
 }
 
-/** Install the mux tool and commands into a harness context. */
-export function apply(ctx: Context, config: Config = {}): void {
-  const store = new ThreadStore(storeDir(ctx))
-  const services: TurnServices = {
-    store,
-    timeoutMs: config.timeoutMs,
-    outputCapBytes: config.outputCapBytes,
-  }
+/** Generic, args-only pending presentation for the mux tool call. */
+function present(title: string, rawInput?: unknown): GenericCallView {
+  return { card: 'generic', title, kind: 'other', ...rawInput === undefined ? {} : { rawInput } }
+}
 
-  ctx.tools.register({
+/** Register the model-facing `mux` tool and the `/mux` + `/ask` commands. */
+export function apply(ctx: Context, config: Config = {}): void {
+  const services = turnServices(ctx, config)
+  const panelCwd = (): string => config.workspace || process.cwd()
+
+  ctx.tools.register(defineTool({
     name: 'mux',
     description: 'Run one turn of another coding CLI (claude, omp, pi, cursor, agy, '
-      + 'command-code, opencode) and return its text. The prompt runs non-interactively; '
-      + 'a stored CLI session id continues the same thread when threadId is passed.',
+      + 'command-code, opencode) and return its text. Non-interactive accept mode; '
+      + 'pass threadId to continue that thread on the stored CLI session id. '
+      + 'Known ids: ' + ADAPTER_IDS.join(', '),
     parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        tool: { type: 'string', enum: ADAPTERS.map(spec => spec.id) },
-        prompt: { type: 'string' },
-        threadId: { type: 'string' },
-      },
-      required: ['tool', 'prompt'],
+      tool: { type: 'string', enum: [...ADAPTER_IDS], required: true },
+      prompt: { type: 'string', required: true },
+      threadId: { type: 'string' },
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          header: { type: 'string' },
-          text: { type: 'string' },
-          threadId: { type: 'string' },
+          header: { type: 'string', required: true },
+          text: { type: 'string', required: true },
+          threadId: { type: 'string', required: true },
         },
       },
-      render: (_args: unknown, value: unknown) => {
-        const text = (value as { header: string; text: string }).header
-          + '\n' + (value as { text: string }).text
-        return [{ type: 'text' as const, text }]
-      },
+      render: (_args: unknown, value: { header: string, text: string }) => [
+        { type: 'text' as const, text: `${value.header}\n${value.text}` },
+      ],
     },
-    execute: async (args: unknown, exec: { agent?: unknown; signal: AbortSignal }) => {
-      const parsed = args as { tool: string; prompt: string; threadId?: string }
-      const agent = exec.agent as { session?: { header?: { cwd?: string } } } | undefined
-      const cwd = agent?.session?.header?.cwd ?? process.cwd()
-      const settled = await sendTurn(services, {
-        cli: parsed.tool,
-        prompt: parsed.prompt,
+    execute: async (args: { tool: string, prompt: string, threadId?: string }, exec: { signal: AbortSignal }) => {
+      const agent = (exec as { agent?: { session?: { header?: { cwd?: string } } } }).agent
+      const cwd = agent?.session?.header?.cwd ?? panelCwd()
+      return sendTurn(services, {
+        cli: args.tool,
+        prompt: args.prompt,
         cwd,
-        ...(parsed.threadId === undefined ? {} : { threadId: parsed.threadId }),
+        ...(args.threadId === undefined ? {} : { threadId: args.threadId }),
         signal: exec.signal,
       })
-      return settled
     },
-    presentCall: (args: unknown) => {
-      const parsed = args as { tool?: string; prompt?: string };
-      return {
-        card: 'generic',
-        title: `Mux ${typeof parsed.tool === 'string' ? parsed.tool : ''}`,
-        kind: 'other',
-        ...(typeof parsed.prompt === 'string' ? { rawInput: parsed.prompt } : {}),
-      }
-    },
-  })
+    presentCall: (args: { tool?: string, prompt?: string }) =>
+      present(`Mux ${typeof args.tool === 'string' ? args.tool : ''} ${args.prompt ?? ''}`.trim()),
+  }))
 
   const registerCommand = (commandName: 'mux' | 'ask'): void => {
     ctx.commands.register({
@@ -207,15 +211,12 @@ export function apply(ctx: Context, config: Config = {}): void {
           return { kind: 'success', text: 'Open the Mux page in the sidebar.' }
         }
         if (request.kind === 'error') return { kind: 'error', text: request.text }
-        const cwd = invocation.agent.session.header.cwd ?? process.cwd()
+        const cwd = invocation.agent.session.header.cwd ?? panelCwd()
         return sendTurn(services, { cli: request.cli, prompt: request.prompt, cwd })
-          .then(settled => {
-            void invocation.agent.followup({
-              content: [{ type: 'text', text: `${settled.header}\n${settled.text}` }],
-              source: { kind: 'plugin', plugin: name },
-            } as never)
-            return { kind: 'success' as const, text: `${settled.header}\n${settled.text}` }
-          })
+          .then(settled => ({
+            kind: 'success' as const,
+            text: `${settled.header}\n${settled.text}`,
+          }))
           .catch((error: unknown) => ({
             kind: 'error' as const,
             text: `mux failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -225,16 +226,13 @@ export function apply(ctx: Context, config: Config = {}): void {
   }
   registerCommand('mux')
   registerCommand('ask')
-
-  ctx.effect(() => {
-    void services
-    return () => {}
-  }, 'dsh-mux: store lifetime')
 }
 
-export { discover, ADAPTERS }
+export { discover, ADAPTERS, ADAPTER_IDS }
 export type { AdapterStatus } from './discovery.ts'
 export type { MuxThread, MuxTurn } from './threads.ts'
 export { ThreadStore } from './threads.ts'
-
-export default apply
+// No `export default`: the loader's unwrapExports prefers `default`, which
+// would hand cordis the bare function — its `.inject` is undefined and the
+// fiber starts with an empty inject. The named { name, inject, apply } shape
+// is what cordis consumes for function plugins (default is for class plugins).
