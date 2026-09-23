@@ -12,7 +12,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AssistantRuntimeProvider,
-  ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useExternalStoreRuntime,
@@ -360,7 +359,17 @@ function MuxPanel({ host, ready }: {
               <span data-mux-badge="">
                 {tool + (thread !== null && thread.cliSessionId !== undefined ? ` · ${thread.cliSessionId}` : '')}
               </span>
-              <ComposerPrimitive.Root data-mux-composer-root="">
+              {/* Plain form/button, not ComposerPrimitive: aui's action-button
+                  factory forces disabled when ITS internal composer is empty
+                  (we never bind ComposerPrimitive.Input), so Send could never
+                  enable. Enter submits the form too — single send path. */}
+              <form
+                data-mux-composer-root=""
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void send()
+                }}
+              >
                 <textarea
                   data-mux-input=""
                   value={prompt}
@@ -374,17 +383,10 @@ function MuxPanel({ host, ready }: {
                     }
                   }}
                 />
-                <ComposerPrimitive.Send
-                  data-mux-send=""
-                  disabled={!canSend}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    void send()
-                  }}
-                >
+                <button type="submit" data-mux-send="" disabled={!canSend}>
                   {busy ? 'Running…' : 'Send'}
-                </ComposerPrimitive.Send>
-              </ComposerPrimitive.Root>
+                </button>
+              </form>
             </div>
           </AssistantRuntimeProvider>
         </div>
