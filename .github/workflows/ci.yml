@@ -67,7 +67,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
+          # No `cache: npm` on self-hosted: the post-job cache save talks to
+          # GitHub's cache service and has hung this runner after a green
+          # suite. A cold `npm ci` of ~37 packages is seconds; skip the cache.
 
       # .npmrc sets auto-install-peers=false so unpublished harness peers do not
       # abort the install. Only schemastery + tsdown/typescript/@types/node land.
