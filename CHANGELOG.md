@@ -9,11 +9,16 @@ clear note).
 
 ## [Unreleased]
 
+### Changed
+
+- CI runs on the self-hosted `dsh-mux` runner (private-repo Actions minutes),
+  with a hard 15-minute timeout and maintainer docs for the launchd service.
+
 ### Added
 
 - Brand assets under `assets/` (logo, mark, favicon, social card).
 - Open-source meta: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
-  GitHub issue/PR templates, Dependabot, and CI workflow.
+  GitHub issue/PR templates, Dependabot, CODEOWNERS, actionlint labels, and CI.
 
 ## [0.1.0] — 2026-09-23
 
