@@ -1,6 +1,6 @@
 {
   "name": "@freepeak/dsh-mux",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "DeepSeek Harness plugin: talk to coding CLIs (Claude Code, Cursor, …) from the GUI and keep the thread.",
   "type": "module",
@@ -63,9 +63,15 @@
     "@deepseek-ai/dsh-typert-protocol": ">=0.1.0"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/cordis": { "optional": true },
-    "@deepseek-ai/dsh-tools": { "optional": true },
-    "@deepseek-ai/dsh-typert-protocol": { "optional": true }
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "tsdown": "^0.23.0",

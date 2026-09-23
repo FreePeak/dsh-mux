@@ -9,6 +9,8 @@ clear note).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-23
+
 ### Changed
 
 - CI runs on the self-hosted `dsh-mux` runner (private-repo Actions minutes),
@@ -37,5 +39,6 @@ clear note).
   proving `/mux`, `/ask`, thread persistence, and `--resume`.
 - Unit tests (28) including artifact gates for `client.js` and remote markers.
 
-[Unreleased]: https://github.com/FreePeak/dsh-mux/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/FreePeak/dsh-mux/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/FreePeak/dsh-mux/releases/tag/v0.2.0
 [0.1.0]: https://github.com/FreePeak/dsh-mux/releases/tag/v0.1.0
