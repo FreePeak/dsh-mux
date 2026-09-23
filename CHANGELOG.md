@@ -9,6 +9,21 @@ clear note).
 
 ## [Unreleased]
 
+### Fixed
+
+- Claude Code `stream-json` answers are parsed to the final result text
+  (assistant message frames as fallback) instead of storing the raw NDJSON
+  event dump (hooks, init, usage) as the thread answer.
+
+### Changed
+
+- Only Claude Code is enabled for send/select in this build; the other six
+  adapters still appear in discovery but are disabled until their answer
+  parsers are proven (`ENABLED_ADAPTER_IDS`).
+- Mux panel UI revamp: assistant-ui (ExternalStoreRuntime + Thread/Composer
+  primitives) vendored into `client.js` via `web/build.mjs`, Cursor Dark
+  Anysphere tokens, session-rail layout with thread delete.
+
 ## [0.2.0] — 2026-09-23
 
 ### Changed

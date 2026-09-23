@@ -1,0 +1,338 @@
+/**
+ * Cursor Dark Anysphere tokens for the Mux panel, mapped onto
+ * assistant-ui's CSS variables so Thread/Composer primitives inherit the
+ * scheme. Scoped under [data-mux-panel] — nothing here leaks into the host.
+ *
+ * Source: Cursor app theme `cursor-dark-color-theme.json` (Anysphere).
+ * Focus keeps a visible ring even though Cursor often zeros focusBorder
+ * (a11y: never remove focus indication; use the alpha ring token instead).
+ */
+
+[data-mux-panel] {
+  /* Cursor palette */
+  --mux-bg: #181818;
+  --mux-rail: #141414;
+  --mux-fg: #f0f0f0;
+  --mux-muted: #8a8a8a;
+  --mux-border: #f0f0f013;
+  --mux-focus: #f0f0f040;
+  --mux-selection: #f0f0f01e;
+  --mux-accent: #81a1c1;
+  --mux-primary: #81a1c1;
+  --mux-on-primary: #191c22;
+  --mux-ok: #3fa266;
+  --mux-bad: #e34671;
+  --mux-warn: #d2943e;
+  --mux-badge: #88c0d0;
+  --mux-input-bg: #f0f0f00a;
+
+  /* assistant-ui / shadcn-style variable surface */
+  --background: var(--mux-bg);
+  --foreground: var(--mux-fg);
+  --primary: var(--mux-primary);
+  --primary-foreground: var(--mux-on-primary);
+  --secondary: var(--mux-rail);
+  --secondary-foreground: var(--mux-fg);
+  --muted: var(--mux-rail);
+  --muted-foreground: var(--mux-muted);
+  --border: var(--mux-border);
+  --input-background: var(--mux-input-bg);
+  --ring: var(--mux-focus);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--mux-bg);
+  color: var(--mux-fg);
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+[data-mux-panel] * { box-sizing: border-box; }
+[data-mux-panel] ::selection { background: var(--mux-selection); }
+[data-mux-panel] :focus-visible {
+  outline: 2px solid var(--mux-focus);
+  outline-offset: 1px;
+}
+
+/* ── discovery strip (harness picker) ─────────────────────────────── */
+
+[data-mux-strip] {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mux-border);
+}
+
+[data-mux-chip] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 28px;
+  border: 1px solid var(--mux-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mux-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+[data-mux-chip][data-active="true"] {
+  border-color: var(--mux-primary);
+  color: var(--mux-badge);
+  background: color-mix(in srgb, var(--mux-primary) 12%, transparent);
+}
+
+[data-mux-chip][data-installed="false"],
+[data-mux-chip][data-enabled="false"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-mux-chip]:hover:not([disabled]) { border-color: var(--mux-focus); }
+
+[data-mux-dot] {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mux-muted);
+}
+
+[data-mux-dot][data-on="true"] { background: var(--mux-ok); }
+[data-mux-dot][data-enabled="false"] { background: var(--mux-warn); }
+
+/* ── body: session rail + main ────────────────────────────────────── */
+
+[data-mux-body] {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+[data-mux-threads] {
+  width: 250px;
+  flex: none;
+  border-right: 1px solid var(--mux-border);
+  background: var(--mux-rail);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-mux-threads-head] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mux-border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mux-muted);
+  position: sticky;
+  top: 0;
+  background: var(--mux-rail);
+  z-index: 1;
+}
+
+[data-mux-new],
+[data-mux-delete] {
+  border: 1px solid var(--mux-border);
+  background: transparent;
+  color: inherit;
+  border-radius: 6px;
+  padding: 3px 10px;
+  min-height: 26px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+[data-mux-new:hover],
+[data-mux-delete:hover] { border-color: var(--mux-focus); }
+
+[data-mux-delete] {
+  margin-left: auto;
+  padding: 0 7px;
+  opacity: 0;
+  color: var(--mux-muted);
+}
+
+[data-mux-thread]:hover [data-mux-delete] { opacity: 1; }
+
+[data-mux-thread] {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--mux-border);
+  cursor: pointer;
+  position: relative;
+}
+
+[data-mux-thread][data-active="true"] { background: var(--mux-selection); }
+[data-mux-thread]:hover { background: color-mix(in srgb, var(--mux-selection) 55%, transparent); }
+
+[data-mux-thread-title] {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+[data-mux-resume] {
+  color: var(--mux-badge);
+  font-size: 10px;
+}
+
+[data-mux-thread-preview] {
+  color: var(--mux-muted);
+  margin-top: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-mux-main] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+[data-mux-notice] {
+  padding: 7px 12px;
+  background: color-mix(in srgb, var(--mux-bad) 16%, transparent);
+  color: #ffb4b4;
+  font-size: 12.5px;
+}
+
+[data-mux-notice][data-kind="info"] {
+  background: color-mix(in srgb, var(--mux-ok) 16%, transparent);
+  color: #a9e5bb;
+}
+
+/* ── assistant-ui thread surface ───────────────────────────────────── */
+
+[data-mux-turns] {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+[data-mux-empty] {
+  color: var(--mux-muted);
+  margin: auto;
+  text-align: center;
+  padding: 24px;
+}
+
+[data-mux-turn] {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  max-width: 90%;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--mux-rail);
+  border: 1px solid var(--mux-border);
+}
+
+/* user vs assistant: aui sets data-role on MessagePrimitive.Root */
+[data-mux-turn][data-role="user"] {
+  background: color-mix(in srgb, var(--mux-primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--mux-primary) 30%, transparent);
+  margin-left: auto;
+}
+
+[data-mux-turn][data-role="assistant"] { margin-right: auto; }
+
+[data-mux-turn][data-mux-error="true"],
+[data-mux-turn][data-is-error="true"] {
+  background: color-mix(in srgb, var(--mux-bad) 14%, transparent);
+  border-color: color-mix(in srgb, var(--mux-bad) 40%, transparent);
+  color: #ffb4b4;
+}
+
+/* ── composer (sticky, dense) ──────────────────────────────────────── */
+
+[data-mux-composer] {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--mux-border);
+  align-items: flex-end;
+}
+
+[data-mux-composer-root] {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  align-items: flex-end;
+}
+
+[data-mux-input],
+[data-mux-composer] textarea {
+  flex: 1;
+  resize: none;
+  min-height: 40px;
+  max-height: 160px;
+  background: var(--mux-input-bg);
+  color: var(--mux-fg);
+  border: 1px solid var(--mux-border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+[data-mux-composer] textarea::placeholder { color: var(--mux-muted); }
+
+[data-mux-send],
+[data-mux-composer] button {
+  border: none;
+  background: var(--mux-primary);
+  color: var(--mux-on-primary);
+  border-radius: 8px;
+  padding: 9px 16px;
+  min-height: 40px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-mux-send]:hover:not([disabled]),
+[data-mux-composer] button:hover:not([disabled]) {
+  filter: brightness(1.08);
+}
+
+[data-mux-send][disabled],
+[data-mux-composer] button[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+[data-mux-badge] {
+  font-size: 11px;
+  color: var(--mux-badge);
+  background: color-mix(in srgb, var(--mux-primary) 14%, transparent);
+  border: 1px solid var(--mux-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mux-panel] * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
