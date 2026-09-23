@@ -2,7 +2,8 @@ node_modules/
 .DS_Store
 *.log
 .env
-.env.local
+.env.*
+!.env.example
 .vscode/
 .idea/
 coverage/
@@ -10,3 +11,7 @@ lib/
 dist/
 .mux-cache/
 *.tsbuildinfo
+.worktrees/
+.turbo/
+playwright-report/
+test-results/

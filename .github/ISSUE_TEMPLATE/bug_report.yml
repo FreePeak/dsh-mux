@@ -1,0 +1,51 @@
+name: Bug report
+description: Something broken in dsh-mux (host, panel, adapter, or Docker path)
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A small reproduction beats a long theory.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Expected vs actual, in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Steps, commands, or a minimal config. Include DSH / dsh-mux versions if you know them.
+      placeholder: |
+        1. dsh plugin install …
+        2. /ask claude …
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Host plugin (/mux, /ask, tool mux)
+        - Remote service (ctx.remote.mux)
+        - Browser panel (client.js)
+        - CLI adapter / resume
+        - Docker / drive.py
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "e.g. dsh-mux 0.1.0, Node 22.x, dsh 0.1.7-alpha.1"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Paste text logs preferred; images welcome for UI issues.

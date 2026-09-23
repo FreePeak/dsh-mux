@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/FreePeak/dsh-mux/security/advisories/new
+    about: Report a vulnerability privately (see SECURITY.md). Do not file a public issue.
+  - name: DeepSeek Harness
+    url: https://github.com/deepseek-ai
+    about: Issues in the harness itself (workspace picker, session controller, …) belong upstream.

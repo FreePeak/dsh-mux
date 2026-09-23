@@ -2,6 +2,7 @@
   "name": "@freepeak/dsh-mux",
   "version": "0.1.0",
   "private": true,
+  "description": "DeepSeek Harness plugin: talk to coding CLIs (Claude Code, Cursor, …) from the GUI and keep the thread.",
   "type": "module",
   "main": "./lib/index.mjs",
   "types": "./lib/index.d.mts",
@@ -18,10 +19,17 @@
   "files": [
     "lib",
     "client.js",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "assets",
+    "LICENSE",
+    "README.md"
   ],
   "license": "MIT",
-  "author": "Linh Doan",
+  "author": "Linh Doan <mnhatlinh.doan@gmail.com>",
+  "homepage": "https://github.com/FreePeak/dsh-mux#readme",
+  "bugs": {
+    "url": "https://github.com/FreePeak/dsh-mux/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FreePeak/dsh-mux.git"
@@ -32,15 +40,19 @@
     "agent",
     "mux",
     "cli",
+    "claude-code",
+    "cursor",
     "threads",
-    "cordis"
+    "cordis",
+    "plugin"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "build": "tsdown src/index.ts src/remote.ts --format esm --out-dir lib",
-    "test": "node --experimental-strip-types --test test/*.test.ts"
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.2"

@@ -1,0 +1,35 @@
+name: Feature request
+description: A concrete improvement to dsh-mux
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first. Solutions without a problem are hard to schedule.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who is stuck, and what can they not do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should change? Keep scope tight — one concern.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. What you already ruled out and why.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Willing to contribute?
+      options:
+        - label: I can open a PR for this
+        - label: I can help test a draft
