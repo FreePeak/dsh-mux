@@ -1,183 +1,107 @@
 /**
- * Cursor Dark Anysphere design tokens for the Mux panel.
+ * Mux panel — inherits the host DSH chat's design system.
  *
- * Direction (ui-ux-pro-max + assistant-ui design system):
- *   product pattern  AI/Chatbot Platform → AI-Native UI + Minimalism
- *   style            Dark Mode (OLED) — matches Cursor, eye-strain safe
- *   typography       "Developer Mono" pairing: system sans for chrome,
- *                    JetBrains Mono / ui-monospace for CLI output
- *   motion           150ms state transitions, prefers-reduced-motion honoured
+ * The panel is a `main` slot inside the host web app, so it must look native:
+ * every colour, font and surface comes from the host's `--dsw-*` / `--dsh-*`
+ * tokens, which the host already publishes (ui-theme `boot-theme.ts`) and
+ * re-resolves for light / dark. Nothing here re-declares a palette — a hard
+ * dark theme painted inside the host's light canvas was what made this panel
+ * look foreign.
  *
- * Two token surfaces, both on Cursor Anysphere:
- *   1. --mux-*        raw hex, for this file's own rules
- *   2. --background…  HSL triplets, because assistant-ui's generated.css
- *                     resolves them as hsl(var(--x) / <alpha>). Passing hex
- *                     here silently voids every such rule.
+ * Geometry is copied from the host's own chat:
+ *   MessageItem.module.css  → user turn is a 22px-radius bubble, assistant
+ *                              text is plain on the canvas (no bubble)
+ *   InputBar.module.css     → composer is a 22px card, --dsw-specific-input-
+ *                              major fill, --dsw-elevation-soft shadow, l2 hairline
+ *   ChatView.module.css     → centred column, 16px scroll padding
+ *
+ * Only mux-specific structure lives here: the thread rail, the CLI chip strip,
+ * and the session badge. Every token is written with a fallback so the panel
+ * still renders if the host has not published one.
  *
  * Scoped under [data-mux-panel] — nothing leaks into the host.
- * Source: Cursor app theme `cursor-dark-color-theme.json` (Anysphere).
  */
 
+/* ── panel shell ──────────────────────────────────────────────────── */
+
 [data-mux-panel] {
-  /* ── Cursor Anysphere palette (hex) ─────────────────────────────── */
-  --mux-bg: #181818;
-  --mux-rail: #141414;
-  --mux-surface: #1c1c1c;
-  --mux-surface-2: #202020;
-  --mux-fg: #f0f0f0;
-  --mux-fg-dim: #c8c8c8;
-  --mux-muted: #9a9a9a;
-  --mux-border: #2e2e2e;
-  --mux-border-soft: #f0f0f014;
-  --mux-focus: #81a1c166;
-  --mux-selection: #81a1c12e;
-  --mux-accent: #81a1c1;
-  --mux-primary: #81a1c1;
-  --mux-on-primary: #191c22;
-  --mux-ok: #3fa266;
-  --mux-bad: #e34671;
-  --mux-warn: #d2943e;
-  --mux-badge: #88c0d0;
-  --mux-input-bg: #ffffff0a;
-
-  /* ── scale (8px grid) ──────────────────────────────────────────── */
-  --mux-space-1: 4px;
-  --mux-space-2: 8px;
-  --mux-space-3: 12px;
-  --mux-space-4: 16px;
-  --mux-radius-sm: 6px;
-  --mux-radius: 8px;
-  --mux-radius-lg: 10px;
-  --mux-radius-full: 999px;
-  --mux-control: 32px;      /* assistant-ui Button default height */
-  --mux-control-sm: 28px;
-  --mux-ease: cubic-bezier(0.2, 0, 0.2, 1);
-  --mux-dur: 150ms;
-
-  /* ── type ──────────────────────────────────────────────────────── */
-  --mux-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    "IBM Plex Sans", sans-serif;
-  --mux-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
-    Consolas, monospace;
-
-  /* ── assistant-ui / shadcn variable surface (HSL triplets) ──────── */
-  --background: 0 0% 9.4%;        /* #181818 */
-  --foreground: 0 0% 94.1%;       /* #f0f0f0 */
-  --card: 0 0% 11%;              /* #1c1c1c */
-  --card-foreground: 0 0% 94.1%;
-  --popover: 0 0% 11%;
-  --popover-foreground: 0 0% 94.1%;
-  --primary: 210 34% 63.1%;      /* #81a1c1 */
-  --primary-foreground: 220 15.3% 11.6%;
-  --secondary: 0 0% 12.5%;
-  --secondary-foreground: 0 0% 94.1%;
-  --muted: 0 0% 12.5%;
-  --muted-foreground: 0 0% 60.4%;/* #9a9a9a */
-  --accent: 0 0% 16.5%;
-  --accent-foreground: 0 0% 94.1%;
-  --destructive: 344 73.7% 58.2%;/* #e34671 */
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 18%;            /* #2e2e2e */
-  --input: 0 0% 18%;
-  --ring: 210 34% 63.1%;
-  --sidebar: 0 0% 7.8%;          /* #141414 */
-  --sidebar-foreground: 0 0% 94.1%;
-  --sidebar-border: 0 0% 18%;
-  --radius: 0.5rem;
-
-  /* Thread element contract (assistant-ui sets these inline on Root, so we
-     declare them here for the primitives we compose ourselves). */
-  --thread-max-width: 52rem;
-  --composer-bg: var(--mux-input-bg);
-  --composer-radius: var(--mux-radius-lg);
-  --composer-padding: var(--mux-space-1);
-
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--mux-bg);
-  color: var(--mux-fg);
-  font: 13px/1.5 var(--mux-font-sans);
-  -webkit-font-smoothing: antialiased;
+  /* Transparent so the host canvas (and its light/dark switch) shows through. */
+  background: transparent;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.5;
 }
 
 [data-mux-panel] * { box-sizing: border-box; }
-[data-mux-panel] ::selection { background: var(--mux-selection); }
+[data-mux-panel] ::selection { background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent); }
 
-/* Focus stays visible (a11y: never remove focus indication). */
-[data-mux-panel] :focus-visible {
-  outline: 2px solid var(--mux-accent);
-  outline-offset: 2px;
-  border-radius: var(--mux-radius-sm);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-mux-panel] *,
-  [data-mux-panel] *::before,
-  [data-mux-panel] *::after {
-    transition: none !important;
-    animation: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ── discovery strip (harness picker) ─────────────────────────────── */
+/* ── CLI chip strip ───────────────────────────────────────────────── */
 
 [data-mux-strip] {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--mux-border);
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 0.04));
 }
 
 [data-mux-chip] {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  height: 28px;
   padding: 0 12px;
-  min-height: var(--mux-control-sm);
-  border: 1px solid var(--mux-border);
-  border-radius: var(--mux-radius-full);
+  border: 1px solid var(--dsw-alias-border-l2, rgb(0 0 0 / 0.1));
+  border-radius: 14px;
   background: transparent;
-  color: var(--mux-fg-dim);
+  color: var(--dsw-alias-label-secondary, inherit);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
-  transition: background var(--mux-dur) var(--mux-ease),
-    border-color var(--mux-dur) var(--mux-ease),
-    color var(--mux-dur) var(--mux-ease);
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    border-color var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+[data-mux-chip]:hover:not([disabled]) {
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  border-color: var(--dsw-alias-border-l3, rgb(0 0 0 / 0.12));
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 [data-mux-chip][data-active="true"] {
-  border-color: color-mix(in srgb, var(--mux-primary) 55%, transparent);
-  color: var(--mux-badge);
-  background: color-mix(in srgb, var(--mux-primary) 14%, transparent);
+  background: var(--dsw-alias-state-business-tertiary, #e4edfd);
+  border-color: transparent;
+  color: var(--dsw-alias-state-business-primary, #4176e6);
 }
 
 [data-mux-chip][data-installed="false"],
 [data-mux-chip][data-enabled="false"] {
-  opacity: 0.45;
+  color: var(--dsw-alias-label-caption, #adb2b8);
   cursor: not-allowed;
-}
-
-[data-mux-chip]:hover:not([disabled]) {
-  border-color: color-mix(in srgb, var(--mux-accent) 50%, transparent);
-  background: var(--mux-input-bg);
-  color: var(--mux-fg);
 }
 
 [data-mux-dot] {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--mux-muted);
+  background: var(--dsw-alias-label-caption, #adb2b8);
   flex: none;
 }
 
-[data-mux-dot][data-on="true"][data-enabled="true"] { background: var(--mux-ok); }
-[data-mux-dot][data-on="true"][data-enabled="false"] { background: var(--mux-warn); }
+[data-mux-dot][data-on="true"][data-enabled="true"] {
+  background: var(--dsw-alias-state-warn-primary, #f59e0b);
+}
+
+[data-mux-dot][data-on="true"][data-enabled="false"] {
+  background: var(--dsw-alias-label-caption, #adb2b8);
+}
 
 /* ── body: session rail + main ────────────────────────────────────── */
 
@@ -190,8 +114,8 @@
 [data-mux-threads] {
   width: 248px;
   flex: none;
-  border-right: 1px solid var(--mux-border);
-  background: var(--mux-rail);
+  border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 0.04));
+  background: var(--dsw-specific-sidebar-fill, rgb(0 0 0 / 0.02));
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -202,17 +126,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 var(--mux-space-3);
-  height: var(--mux-control);
-  border-bottom: 1px solid var(--mux-border);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--mux-muted);
+  padding: 8px 12px;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-size: 12px;
+  font-weight: 500;
   position: sticky;
   top: 0;
-  background: var(--mux-rail);
+  background: var(--dsw-specific-sidebar-fill, rgb(0 0 0 / 0.02));
   z-index: 1;
 }
 
@@ -222,81 +142,73 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: 1px solid var(--mux-border);
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
   background: transparent;
-  color: var(--mux-fg-dim);
-  border-radius: var(--mux-radius-sm);
-  min-height: var(--mux-control-sm);
-  min-width: var(--mux-control-sm);
-  padding: 0 var(--mux-space-2);
+  color: var(--dsw-alias-label-secondary, inherit);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: background var(--mux-dur) var(--mux-ease),
-    border-color var(--mux-dur) var(--mux-ease),
-    color var(--mux-dur) var(--mux-ease);
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
 }
 
 [data-mux-new]:hover,
 [data-mux-delete]:hover {
-  border-color: color-mix(in srgb, var(--mux-accent) 50%, transparent);
-  background: var(--mux-input-bg);
-  color: var(--mux-fg);
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 [data-mux-delete] {
   margin-left: auto;
-  padding: 0;
   opacity: 0;
-  color: var(--mux-muted);
-  transition: opacity var(--mux-dur) var(--mux-ease),
-    background var(--mux-dur) var(--mux-ease);
+  transition: opacity var(--ds-transition-duration-fast, 0.1s) ease;
 }
 
 /* Never hover-only: keyboard focus reveals it too. */
 [data-mux-thread]:hover [data-mux-delete],
-[data-mux-thread]:focus-within [data-mux-delete] { opacity: 1; }
-
+[data-mux-thread]:focus-within [data-mux-delete],
 [data-mux-delete]:focus-visible { opacity: 1; }
 
 [data-mux-thread] {
-  padding: var(--mux-space-2) var(--mux-space-3);
-  border-bottom: 1px solid color-mix(in srgb, var(--mux-border) 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
   cursor: pointer;
-  position: relative;
   border-left: 2px solid transparent;
-  transition: background var(--mux-dur) var(--mux-ease),
-    border-color var(--mux-dur) var(--mux-ease);
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease;
 }
+
+[data-mux-thread]:hover { background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03)); }
 
 [data-mux-thread][data-active="true"] {
-  background: var(--mux-surface-2);
-  border-left-color: var(--mux-accent);
+  background: var(--dsw-alias-state-business-tertiary, #e4edfd);
+  border-left-color: var(--dsw-alias-state-business-primary, #4176e6);
 }
-
-[data-mux-thread]:hover { background: var(--mux-surface); }
-[data-mux-thread][data-active="true"]:hover { background: var(--mux-surface-2); }
 
 [data-mux-thread-title] {
   display: flex;
   gap: 6px;
   align-items: center;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 13px;
   font-weight: 500;
-  font-size: 12.5px;
-  color: var(--mux-fg);
 }
 
 [data-mux-resume] {
-  color: var(--mux-badge);
   display: inline-flex;
   align-items: center;
+  color: var(--dsw-alias-label-tertiary, #81858c);
 }
 
 [data-mux-thread-preview] {
-  color: var(--mux-muted);
-  margin-top: 2px;
+  color: var(--dsw-alias-label-tertiary, #81858c);
   font-size: 12px;
-  font-family: var(--mux-font-mono);
+  font-family: var(--ds-font-family-code, monospace);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -311,185 +223,156 @@
 }
 
 [data-mux-notice] {
-  padding: var(--mux-space-2) var(--mux-space-3);
-  background: color-mix(in srgb, var(--mux-bad) 14%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--mux-bad) 35%, transparent);
-  color: color-mix(in srgb, var(--mux-bad) 45%, #ffffff);
-  font-size: 12.5px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ec1313) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary, #ec1313);
+  font-size: 13px;
 }
 
 [data-mux-notice][data-kind="info"] {
-  background: color-mix(in srgb, var(--mux-ok) 14%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--mux-ok) 35%, transparent);
-  color: color-mix(in srgb, var(--mux-ok) 40%, #ffffff);
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-secondary, inherit);
 }
 
-/* ── assistant-ui thread surface ───────────────────────────────────── */
+/* ── thread surface ───────────────────────────────────────────────── */
 
-/* Viewport is the scroll container; the footer overlays it, so reserve. */
 [data-mux-turns] {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--mux-space-4) var(--mux-space-4) var(--mux-space-1);
-  scroll-padding-bottom: 72px;
-  /* Reserve the composer's height up front: no layout shift on first paint. */
+  /* Host ChatView: 16px around the centred column. */
+  padding: 16px;
+  scroll-padding-bottom: 88px;
   scrollbar-gutter: stable;
 }
 
-[data-mux-turns]::-webkit-scrollbar { width: 10px; }
-[data-mux-turns]::-webkit-scrollbar-thumb {
-  background: var(--mux-border);
-  border-radius: var(--mux-radius-full);
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
-[data-mux-turns]::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--mux-fg) 22%, transparent);
-  background-clip: content-box;
-}
+/* One centred content column, as the host does. */
+[data-mux-turns] > * { max-width: var(--dsh-chat-content-width, 100%); margin-inline: auto; }
 
 .mux-empty {
-  color: var(--mux-muted);
-  margin: auto;
-  text-align: center;
-  padding: var(--mux-space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--mux-space-1);
+  gap: 4px;
+  margin: auto;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary, #81858c);
 }
 
 .mux-empty-title {
-  color: var(--mux-fg);
-  font-size: 14px;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 15px;
   font-weight: 500;
 }
 
-.mux-empty-hint {
-  font-size: 12.5px;
-}
+.mux-empty-hint { font-size: 13px; }
 
-/* Message root is a column so the action bar can sit under the bubble. */
+/* Message root: host pattern is a column so actions sit under the bubble. */
 [data-mux-turn] {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--mux-space-1);
-  margin-bottom: var(--mux-space-4);
-  max-width: min(90%, var(--thread-max-width));
+  gap: 6px;
+  margin-bottom: 20px;
 }
 
 .mux-msg-body {
-  padding: var(--mux-space-2) var(--mux-space-3);
-  border-radius: var(--mux-radius-lg);
-  line-height: 1.55;
-  background: var(--mux-surface);
-  border: 1px solid var(--mux-border);
-  color: var(--mux-fg);
+  color: var(--dsw-alias-label-primary, inherit);
+  white-space: pre-wrap;
   word-break: break-word;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
 }
 
-/* Text parts are real <p> now — CLI output stays readable in mono. */
 .mux-text {
   margin: 0;
   white-space: pre-wrap;
-  font-family: var(--mux-font-mono);
-  font-size: 12.5px;
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 13px;
   line-height: 1.6;
   tab-size: 2;
 }
 
-.mux-msg-error:not(:empty) {
-  margin-top: var(--mux-space-2);
-  padding: var(--mux-space-2);
-  border-radius: var(--mux-radius-sm);
-  background: color-mix(in srgb, var(--mux-bad) 12%, transparent);
-  color: color-mix(in srgb, var(--mux-bad) 45%, #ffffff);
-  font-size: 12px;
-}
+/* Assistant: plain on the canvas, exactly like the host's markdown. */
+[data-mux-turn][data-role="assistant"] { align-items: flex-start; }
 
-/* user vs assistant: aui sets data-role on MessagePrimitive.Root */
+/* User: the host's 22px bubble. */
 [data-mux-turn][data-role="user"] { align-items: flex-end; }
 
 [data-mux-turn][data-role="user"] .mux-msg-body {
-  background: color-mix(in srgb, var(--mux-primary) 16%, transparent);
-  border-color: color-mix(in srgb, var(--mux-primary) 30%, transparent);
+  max-width: min(calc(var(--dsh-chat-content-width, 748px) * 0.702), 82%);
+  padding: 10px 16px;
+  border-radius: 22px;
+  background: var(--dsw-specific-bubble, rgb(0 0 0 / 0.04));
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 [data-mux-turn][data-role="user"] .mux-text {
-  font-family: var(--mux-font-sans);
-  font-size: 13px;
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.6;
 }
 
 [data-mux-turn][data-mux-error="true"],
 [data-mux-turn][data-is-error="true"] {
-  color: color-mix(in srgb, var(--mux-bad) 45%, #ffffff);
+  color: var(--dsw-alias-state-error-primary, #ec1313);
 }
 
-[data-mux-turn][data-mux-error="true"] .mux-msg-body,
-[data-mux-turn][data-is-error="true"] .mux-msg-body {
-  background: color-mix(in srgb, var(--mux-bad) 12%, transparent);
-  border-color: color-mix(in srgb, var(--mux-bad) 40%, transparent);
+.mux-msg-error:not(:empty) {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ec1313) 8%, transparent);
+  font-size: 13px;
 }
 
-/* ── message action bar (copy) ─────────────────────────────────────── */
+/* ── message actions ──────────────────────────────────────────────── */
 
 .mux-actionbar {
   display: flex;
-  gap: var(--mux-space-1);
+  gap: 4px;
   opacity: 0;
-  transition: opacity var(--mux-dur) var(--mux-ease);
+  transition: opacity var(--ds-transition-duration, 0.2s) ease;
 }
 
 [data-mux-turn]:hover .mux-actionbar,
-[data-mux-turn]:focus-within .mux-actionbar {
-  opacity: 1;
-}
+[data-mux-turn]:focus-within .mux-actionbar { opacity: 1; }
 
 .mux-action {
   display: inline-flex;
   align-items: center;
-  gap: var(--mux-space-1);
-  border: 1px solid transparent;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
   background: transparent;
-  color: var(--mux-muted);
-  border-radius: var(--mux-radius-sm);
-  min-height: 24px;
-  padding: 0 var(--mux-space-2);
+  color: var(--dsw-alias-label-tertiary, #81858c);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
-  transition: background var(--mux-dur) var(--mux-ease),
-    color var(--mux-dur) var(--mux-ease),
-    border-color var(--mux-dur) var(--mux-ease);
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
 }
 
 .mux-action:hover:not([disabled]) {
-  color: var(--mux-fg);
-  background: var(--mux-surface-2);
-  border-color: var(--mux-border);
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
-.mux-action svg { width: 12px; height: 12px; }
-
-/* data-copied is set by ActionBarPrimitive.Copy for copiedDuration */
+.mux-action svg { width: 13px; height: 13px; }
 .mux-action-done { display: none; }
 .mux-action[data-copied] .mux-action-copy { display: none; }
 .mux-action[data-copied] .mux-action-done {
   display: inline-flex;
   align-items: center;
-  gap: var(--mux-space-1);
-  color: var(--mux-ok);
+  gap: 4px;
+  color: var(--dsw-alias-state-warn-primary, #f59e0b);
 }
-
 .mux-action[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-/* ── scroll-to-bottom (auto-disabled when already at bottom) ───────── */
+/* ── scroll to bottom ─────────────────────────────────────────────── */
 
 .mux-scroll-bottom {
   position: sticky;
-  bottom: 84px;
+  bottom: 92px;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
@@ -497,79 +380,71 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: var(--mux-radius-full);
-  border: 1px solid var(--mux-border);
-  background: var(--mux-surface-2);
-  color: var(--mux-muted);
+  border: none;
+  border-radius: 50%;
+  background: var(--dsw-elevation-panel, rgb(0 0 0 / 0.06));
+  box-shadow: var(--dsw-elevation-panel, none);
+  color: var(--dsw-alias-label-secondary, inherit);
   cursor: pointer;
   margin: 0 auto;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
-  transition: color var(--mux-dur) var(--mux-ease),
-    border-color var(--mux-dur) var(--mux-ease);
 }
 
-.mux-scroll-bottom:hover:not([disabled]) {
-  color: var(--mux-fg);
-  border-color: color-mix(in srgb, var(--mux-accent) 50%, transparent);
-}
-
+.mux-scroll-bottom:hover:not([disabled]) { color: var(--dsw-alias-label-primary, inherit); }
 .mux-scroll-bottom svg { width: 14px; height: 14px; }
 .mux-scroll-bottom[disabled] { opacity: 0; pointer-events: none; }
 
-/* ── composer (sticky, dense) ──────────────────────────────────────── */
+/* ── composer: the host's InputBar card ───────────────────────────── */
 
 .mux-footer {
   position: sticky;
   bottom: 0;
-  background: linear-gradient(to top, var(--mux-bg) 72%, transparent);
-  padding-top: var(--mux-space-2);
+  padding: 4px 16px 8px;
 }
 
 [data-mux-composer] {
   display: flex;
-  gap: var(--mux-space-2);
-  padding: var(--mux-space-2) var(--mux-space-4) var(--mux-space-3);
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+  max-width: var(--dsh-chat-content-width, 100%);
+  margin-inline: auto;
 }
 
 [data-mux-composer-root] {
   display: flex;
-  gap: var(--mux-space-2);
-  flex: 1;
   align-items: flex-end;
-  border: 1px solid var(--mux-border);
-  border-radius: var(--mux-radius-lg);
-  background: var(--mux-input-bg);
-  padding: var(--mux-space-1);
-  transition: border-color var(--mux-dur) var(--mux-ease),
-    box-shadow var(--mux-dur) var(--mux-ease);
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 22px;
+  background: var(--dsw-specific-input-major, #fff);
+  box-shadow: var(--dsw-elevation-soft, none),
+    0 0 0 0.5px var(--dsw-alias-border-l2, rgb(0 0 0 / 0.1));
+  font-size: var(--dsh-content-font-size, 14px);
+  transition: box-shadow var(--ds-transition-duration, 0.2s) ease;
 }
 
 [data-mux-composer-root]:focus-within {
-  border-color: color-mix(in srgb, var(--mux-accent) 60%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mux-accent) 12%, transparent);
+  box-shadow: var(--dsw-elevation-soft, none),
+    0 0 0 0.5px var(--dsw-alias-state-business-primary, #4176e6);
 }
 
 [data-mux-input],
 [data-mux-composer] textarea {
   flex: 1;
   resize: none;
-  min-height: var(--mux-control-sm);
+  min-height: 24px;
   max-height: 180px;
-  background: transparent;
-  color: var(--mux-fg);
+  padding: 0;
   border: none;
   outline: none;
-  border-radius: var(--mux-radius);
-  padding: var(--mux-space-1) var(--mux-space-2);
-  font-family: var(--mux-font-mono);
-  font-size: 12.5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
   line-height: 1.6;
 }
 
 [data-mux-composer] textarea::placeholder {
-  color: var(--mux-muted);
-  font-family: var(--mux-font-sans);
+  color: var(--dsw-alias-label-tertiary, #81858c);
 }
 
 [data-mux-send],
@@ -577,50 +452,43 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--mux-space-1);
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
   border: none;
-  background: var(--mux-primary);
-  color: var(--mux-on-primary);
-  border-radius: var(--mux-radius);
-  padding: 0 var(--mux-space-3);
-  min-height: var(--mux-control-sm);
+  border-radius: 16px;
+  background: var(--dsw-alias-state-business-primary, #4176e6);
+  color: #fff;
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: filter var(--mux-dur) var(--mux-ease),
-    opacity var(--mux-dur) var(--mux-ease);
+  transition: opacity var(--ds-transition-duration-fast, 0.1s) ease;
 }
 
-[data-mux-send]:hover:not([disabled]),
-[data-mux-composer] button:hover:not([disabled]) { filter: brightness(1.1); }
-
+[data-mux-send]:hover:not([disabled]) { opacity: 0.9; }
 [data-mux-send][disabled],
-[data-mux-composer] button[disabled] {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+[data-mux-composer] button[disabled] { opacity: 0.4; cursor: not-allowed; }
 
 [data-mux-badge] {
   display: inline-flex;
   align-items: center;
-  gap: var(--mux-space-1);
-  height: var(--mux-control-sm);
-  padding: 0 var(--mux-space-2);
+  align-self: flex-start;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-family: var(--ds-font-family-code, monospace);
   font-size: 11px;
-  font-family: var(--mux-font-mono);
-  color: var(--mux-badge);
-  background: color-mix(in srgb, var(--mux-primary) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mux-primary) 22%, transparent);
-  border-radius: var(--mux-radius-sm);
   white-space: nowrap;
-  max-width: 190px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 0;
 }
 
-/* Icons: single stroke weight, currentColor, sized by the button box. */
+/* Icons inherit colour; single stroke weight like the host. */
 [data-mux-panel] svg {
   flex: none;
   stroke: currentColor;
@@ -631,7 +499,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-mux-panel] * {
+  [data-mux-panel] *,
+  [data-mux-panel] *::before,
+  [data-mux-panel] *::after {
     transition: none !important;
     animation: none !important;
   }
