@@ -19,6 +19,8 @@ clear note).
 - Brand assets under `assets/` (logo, mark, favicon, social card).
 - Open-source meta: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
   GitHub issue/PR templates, Dependabot, CODEOWNERS, actionlint labels, and CI.
+- Release pipeline: `.github/workflows/release.yml` cuts a semantic version and
+  a GitHub Release on every push to `main` (`scripts/release.ts`).
 
 ## [0.1.0] — 2026-09-23
 

@@ -35,6 +35,7 @@ npm run build
 | `client.js` | Browser half: sidebar entry, panel, typert contribution |
 | `docker/` | Container recipe + fixture `claude` |
 | `scripts/drive.py` | Wire-level container validation + screenshots |
+| `scripts/release.ts` | Semantic version + GitHub Release on pushes to `main` |
 
 ## Rules that have already cost time
 
@@ -53,7 +54,7 @@ npm run build
 ## Tests
 
 ```bash
-node --experimental-strip-types --test test/*.test.ts   # 28 tests
+node --experimental-strip-types --test test/*.test.ts   # 36 tests
 npm test                                                # same
 ```
 
@@ -95,6 +96,20 @@ cd ~/actions-runners/dsh-mux && ./svc.sh status   # or stop / start
 
 Contributors do not need the runner — `npm test` and `npm run build` locally are
 the same gates.
+
+## Releases
+
+Pushes to `main` cut releases (`.github/workflows/release.yml`, same runner as
+CI). Conventional commits decide the bump: `feat:` → minor,
+`fix:`/`perf:`/`revert:` → patch, a `BREAKING CHANGE` → major (a minor bump
+before 1.0, per `CHANGELOG.md`). Then `scripts/release.ts` updates
+`package.json`, rolls **Unreleased** into a dated section, tags, and creates the
+GitHub Release. Docs/chore/CI-only commits release nothing. Verify the plan
+locally with:
+
+```bash
+node --experimental-strip-types scripts/release.ts --dry-run
+```
 
 ## Pull requests
 

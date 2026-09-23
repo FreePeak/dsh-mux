@@ -1,0 +1,81 @@
+# Release for @freepeak/dsh-mux: every push to `main` becomes a semantic
+# version and a GitHub Release.
+#
+# What runs: scripts/release.ts reads the conventional commits since the last
+# `v*` tag, computes the next version (feat → minor, fix/perf/revert → patch,
+# BREAKING CHANGE → major — a minor bump before 1.0, per CHANGELOG.md), rolls
+# package.json + the CHANGELOG `[Unreleased]` section, pushes the bump commit
+# and tag together, then creates the release through the GitHub REST API (not
+# `gh`: its PATH on the runner is not guaranteed).
+#
+# Loop safety: the bump commit says `[skip ci]` AND is pushed with this
+# workflow's GITHUB_TOKEN, which never re-triggers workflows — this run cannot
+# kick off its own successor.
+#
+# RUNNER: the same self-hosted `dsh-mux` runner as ci.yml, for the reason
+# documented at length there — a private repo on GitHub Free has no hosted
+# Actions allowance, hosted jobs are refused before they start. The same rule
+# applies: IF THIS REPOSITORY IS EVER MADE PUBLIC, switch `runs-on` back to
+# `ubuntu-latest` before opening it up. Triggers are push-to-main and manual
+# dispatch only — never `pull_request` — so this workflow never runs fork code
+# on the maintainer's machine.
+#
+# Gate: this job re-runs the FULL CI gate (install, suite, build, artifact
+# gates) before cutting anything. CI and Release race for the one runner slot,
+# so "CI finished first" cannot be what protects a release — a broken
+# client.js or lib entry must never ship, and this job not cutting a release
+# is a safe failure while a release that ships it is not.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # One release at a time, and never cancel one mid-flight: a half-finished
+  # release leaves a tag without notes (the next run repairs it, but only if
+  # this slot frees up in order).
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  # Push the bump commit + tag, create the release. Nothing else.
+  contents: write
+
+jobs:
+  release:
+    name: release (self-hosted)
+    runs-on: [self-hosted, dsh-mux]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags: the bump is computed from
+          # `git log <last v* tag>..HEAD` plus `git ls-remote --tags origin`.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # No npm cache on self-hosted — same reason as ci.yml.
+
+      # The same four steps as ci.yml: this job races CI for the one runner
+      # slot, so its own gate — not CI's result — is what says "green".
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build host bundle
+        run: npm run build
+
+      - name: Re-run artifact gates after build
+        run: node --experimental-strip-types --test test/artifacts.test.ts
+
+      - name: Compute version, tag, create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node --experimental-strip-types scripts/release.ts
