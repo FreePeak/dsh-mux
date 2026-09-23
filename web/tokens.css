@@ -218,55 +218,171 @@
 
 /* ── assistant-ui thread surface ───────────────────────────────────── */
 
+/* Viewport is now the scroll container; keep it from claiming double space. */
 [data-mux-turns] {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px 12px 4px;
+  /* the footer overlays the scroll area, so reserve its space */
+  scroll-padding-bottom: 64px;
 }
 
-[data-mux-empty] {
+.mux-empty {
   color: var(--mux-muted);
   margin: auto;
   text-align: center;
-  padding: 24px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
+.mux-empty-title {
+  color: var(--mux-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mux-empty-hint {
+  font-size: 12px;
+}
+
+/* Message root is a column so the action bar can sit under the bubble. */
 [data-mux-turn] {
-  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 12px;
+  max-width: 90%;
+}
+
+.mux-msg-body {
   padding: 8px 10px;
   border-radius: 8px;
-  max-width: 90%;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
+  line-height: 1.5;
   background: var(--mux-rail);
   border: 1px solid var(--mux-border);
+  word-break: break-word;
+}
+
+/* Text parts render as real <p> now — keep runs of code/CLI output readable. */
+.mux-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mux-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.mux-msg-error:not(:empty) {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--mux-bad) 14%, transparent);
+  color: #ffb4b4;
+  font-size: 12px;
 }
 
 /* user vs assistant: aui sets data-role on MessagePrimitive.Root */
 [data-mux-turn][data-role="user"] {
-  background: color-mix(in srgb, var(--mux-primary) 14%, transparent);
-  border-color: color-mix(in srgb, var(--mux-primary) 30%, transparent);
-  margin-left: auto;
+  align-items: flex-end;
 }
 
-[data-mux-turn][data-role="assistant"] { margin-right: auto; }
+[data-mux-turn][data-role="user"] .mux-msg-body {
+  background: color-mix(in srgb, var(--mux-primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--mux-primary) 30%, transparent);
+}
 
 [data-mux-turn][data-mux-error="true"],
 [data-mux-turn][data-is-error="true"] {
-  background: color-mix(in srgb, var(--mux-bad) 14%, transparent);
-  border-color: color-mix(in srgb, var(--mux-bad) 40%, transparent);
   color: #ffb4b4;
 }
 
+[data-mux-turn][data-mux-error="true"] .mux-msg-body,
+[data-mux-turn][data-is-error="true"] .mux-msg-body {
+  background: color-mix(in srgb, var(--mux-bad) 14%, transparent);
+  border-color: color-mix(in srgb, var(--mux-bad) 40%, transparent);
+}
+
+/* ── message action bar (copy) ─────────────────────────────────────── */
+
+.mux-actionbar {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+[data-mux-turn]:hover .mux-actionbar,
+[data-mux-turn]:focus-within .mux-actionbar {
+  opacity: 1;
+}
+
+.mux-action {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mux-muted);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.mux-action:hover {
+  color: var(--mux-fg);
+  background: var(--mux-input-bg);
+  border-color: var(--mux-border);
+}
+
+/* data-copied is set by ActionBarPrimitive.Copy for copiedDuration */
+.mux-action-done { display: none; }
+.mux-action[data-copied] .mux-action-copy { display: none; }
+.mux-action[data-copied] .mux-action-done {
+  display: inline;
+  color: var(--mux-ok);
+}
+
+.mux-action[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* ── scroll-to-bottom (auto-disabled when already at bottom) ───────── */
+
+.mux-scroll-bottom {
+  position: sticky;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--mux-border);
+  background: var(--mux-rail);
+  color: var(--mux-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0 auto;
+  opacity: 0.9;
+}
+
+.mux-scroll-bottom:hover { color: var(--mux-fg); }
+.mux-scroll-bottom[disabled] { opacity: 0; pointer-events: none; }
+
 /* ── composer (sticky, dense) ──────────────────────────────────────── */
+
+.mux-footer {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--mux-bg) 70%, transparent);
+  padding-top: 8px;
+}
 
 [data-mux-composer] {
   display: flex;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--mux-border);
+  padding: 8px 12px 12px;
   align-items: flex-end;
 }
 
@@ -275,19 +391,28 @@
   gap: 8px;
   flex: 1;
   align-items: flex-end;
+  border: 1px solid var(--mux-border);
+  border-radius: 10px;
+  background: var(--mux-input-bg);
+  padding: 4px;
+}
+
+[data-mux-composer-root]:focus-within {
+  border-color: color-mix(in srgb, var(--mux-primary) 55%, transparent);
 }
 
 [data-mux-input],
 [data-mux-composer] textarea {
   flex: 1;
   resize: none;
-  min-height: 40px;
+  min-height: 32px;
   max-height: 160px;
-  background: var(--mux-input-bg);
+  background: transparent;
   color: var(--mux-fg);
-  border: 1px solid var(--mux-border);
+  border: none;
+  outline: none;
   border-radius: 8px;
-  padding: 9px 10px;
+  padding: 7px 8px;
   font: inherit;
 }
 
@@ -299,8 +424,8 @@
   background: var(--mux-primary);
   color: var(--mux-on-primary);
   border-radius: 8px;
-  padding: 9px 16px;
-  min-height: 40px;
+  padding: 8px 14px;
+  min-height: 34px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -328,6 +453,7 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

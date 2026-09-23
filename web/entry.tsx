@@ -9,9 +9,13 @@
  * the strip, listThreads() the thread column, send() the composer.
  */
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  AuiIf,
+  ActionBarPrimitive,
   AssistantRuntimeProvider,
+  ComposerPrimitive,
+  MessagePartPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useExternalStoreRuntime,
@@ -139,16 +143,42 @@ export function turnsToMessages(thread: MuxThread | null): ThreadMessageLike[] {
 }
 
 /**
- * One message bubble (role-agnostic body; error styling via wrapper).
- *
- * aui 0.15's ThreadMessages resolves `components.UserMessage` /
- * `components.AssistantMessage` — passing the old `{ User, Assistant }` keys
- * makes getComponent() return undefined and the panel dies with React #130 on
- * the first message render.
+ * One message bubble. Uses the children render fn for Parts (the current
+ * API) so each text part becomes a real <p>, and an ActionBar so a CLI answer
+ * can be copied — the single most useful action for terminal output.
  */
 function MuxMessage({ role }: { role: 'user' | 'assistant' }): React.ReactElement {
-  return React.createElement(MessagePrimitive.Root, { 'data-mux-turn': '', 'data-role': role },
-    React.createElement(MessagePrimitive.Parts))
+  return (
+    <MessagePrimitive.Root data-mux-turn="" data-role={role} className="mux-msg">
+      <div className="mux-msg-body">
+        <MessagePrimitive.Parts>
+          {({ part }) =>
+            part.type === 'text'
+              ? <p className="mux-text"><MessagePartPrimitive.Text /></p>
+              : null
+          }
+        </MessagePrimitive.Parts>
+        <MessagePrimitive.Error className="mux-msg-error" />
+      </div>
+      {role === 'assistant' && (
+        <ActionBarPrimitive.Root
+          hideWhenRunning
+          autohide="not-last"
+          autohideFloat="always"
+          className="mux-actionbar"
+        >
+          <ActionBarPrimitive.Copy
+            copiedDuration={2000}
+            className="mux-action"
+            title="Copy answer"
+          >
+            <span className="mux-action-copy" aria-hidden="true">Copy</span>
+            <span className="mux-action-done" aria-hidden="true">Copied</span>
+          </ActionBarPrimitive.Copy>
+        </ActionBarPrimitive.Root>
+      )}
+    </MessagePrimitive.Root>
+  )
 }
 
 /** The main panel: discovery strip, session rail, aui thread, composer. */
@@ -160,7 +190,6 @@ function MuxPanel({ host, ready }: {
   const [threads, setThreads] = useState<MuxThread[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeCli, setActiveCli] = useState('claude')
-  const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ kind: string, text: string } | null>(null)
 
@@ -192,10 +221,12 @@ function MuxPanel({ host, ready }: {
   const statusOf = (id: string): AdapterStatus | undefined => statuses.find(item => item.id === id)
   const installedOf = (id: string): boolean => statusOf(id)?.installed === true
   const enabledOf = (id: string): boolean => statusOf(id)?.enabled !== false
-  const canSend = !busy && prompt.trim().length > 0 && installedOf(tool) && enabledOf(tool)
 
-  const send = useCallback(async (): Promise<void> => {
-    const text = prompt.trim()
+  // One send path for every entry point (composer Enter, Send click, /mux).
+  // Takes the text explicitly so aui's onNew can hand it over without the
+  // deferred read of composer state that used to race the send.
+  const send = useCallback(async (raw: string): Promise<void> => {
+    const text = raw.trim()
     if (text.length === 0 || busy || !enabledOf(tool)) return
     setBusy(true)
     setNotice(null)
@@ -214,7 +245,6 @@ function MuxPanel({ host, ready }: {
         setNotice({ kind: 'error', text: answer.error.message })
         return
       }
-      setPrompt('')
       setSelectedId(answer.value.threadId)
       await refresh()
     } catch (error) {
@@ -222,11 +252,15 @@ function MuxPanel({ host, ready }: {
     } finally {
       setBusy(false)
     }
-  }, [busy, host, prompt, ready, refresh, selectedId, tool])
+  }, [busy, host, ready, refresh, selectedId, tool])
+
+  // `onNew` is rebuilt every render; a ref keeps it pointing at the current
+  // send without re-subscribing the runtime on every keystroke-driven render.
+  const sendRef = useRef(send)
+  sendRef.current = send
 
   const newThread = useCallback(() => {
     setSelectedId(null)
-    setPrompt('')
     setNotice(null)
   }, [])
 
@@ -261,14 +295,21 @@ function MuxPanel({ host, ready }: {
     messages,
     isRunning: busy,
     convertMessage: (message: ThreadMessageLike) => message,
-    onNew: async (content) => {
-      const text = typeof content === 'string'
-        ? content
-        : content.map(part => part.type === 'text' ? part.text : '').join('')
+    onNew: async (message) => {
+      // onNew receives an AppendMessage — an object whose `.content` is the
+      // parts array (or a plain string). Handle all three shapes so a future
+      // runtime change degrades to "ignore" rather than a thrown TypeError.
+      const raw = (message as { content?: unknown } | string | undefined)
+      const parts = typeof raw === 'string' ? raw : raw?.content
+      const text = typeof parts === 'string'
+        ? parts
+        : Array.isArray(parts)
+          ? parts.map(part => (part as { type?: string, text?: string }).type === 'text'
+              ? (part as { text?: string }).text ?? ''
+              : '').join('')
+          : ''
       if (text.trim().length === 0) return
-      setPrompt(text)
-      // Defer so the textarea value settles before send reads it.
-      setTimeout(() => { void send() }, 0)
+      void sendRef.current(text)
     },
   })
 
@@ -349,55 +390,69 @@ function MuxPanel({ host, ready }: {
         <div data-mux-main="">
           <AssistantRuntimeProvider runtime={runtime}>
             <ThreadPrimitive.Root>
-              <div data-mux-turns="">
-                {thread === null && (
-                  <div data-mux-empty="">
-                    {`New thread on ${CLIS.find(cli => cli.id === tool)?.label ?? tool}.`}
-                    <br />
-                    Send a message to start it.
+              <ThreadPrimitive.Viewport data-mux-turns="">
+                {/* Empty state: aui's own signal, not our `thread === null` guess. */}
+                <AuiIf condition={(s) => s.thread.isEmpty}>
+                  <div data-mux-empty="" className="mux-empty">
+                    <div className="mux-empty-title">
+                      {`New thread on ${CLIS.find(cli => cli.id === tool)?.label ?? tool}.`}
+                    </div>
+                    <div className="mux-empty-hint">Send a message to start it.</div>
                   </div>
-                )}
-                <ThreadPrimitive.Viewport>
-                  <ThreadPrimitive.Messages components={{
-                    UserMessage: () => MuxMessage({ role: 'user' }),
-                    AssistantMessage: () => MuxMessage({ role: 'assistant' }),
-                  }} />
-                </ThreadPrimitive.Viewport>
-              </div>
+                </AuiIf>
+                <ThreadPrimitive.Messages>
+                  {({ message }) =>
+                    message.role === 'user'
+                      ? <MuxMessage role="user" />
+                      : <MuxMessage role="assistant" />
+                  }
+                </ThreadPrimitive.Messages>
+                <ThreadPrimitive.ScrollToBottom
+                  className="mux-scroll-bottom"
+                  aria-label="Scroll to latest"
+                >
+                  ↓
+                </ThreadPrimitive.ScrollToBottom>
+                {/* Registers composer height with the auto-scroll system so the
+                    last message is never hidden behind it. */}
+                <ThreadPrimitive.ViewportFooter className="mux-footer">
+                  <div data-mux-composer="">
+                    <span data-mux-badge="" title={thread?.cliSessionId === undefined
+                      ? `Sending as ${tool}`
+                      : `Resumes CLI session ${thread.cliSessionId}`}>
+                      {tool + (thread !== null && thread.cliSessionId !== undefined
+                        ? ` · ${thread.cliSessionId.slice(0, 8)}`
+                        : '')}
+                    </span>
+                    {/* Real ComposerPrimitive: aui's internal composer owns the
+                        text, so Send gates itself on empty/running and Enter
+                        submits for free. `disabled` additionally holds it shut
+                        while this CLI is unavailable. */}
+                    <ComposerPrimitive.Root
+                      data-mux-composer-root=""
+                      className="mux-composer-form"
+                      compact
+                    >
+                      <ComposerPrimitive.Input
+                        data-mux-input=""
+                        placeholder={`Message ${CLIS.find(cli => cli.id === tool)?.label ?? tool}…`}
+                        rows={1}
+                        className="mux-input"
+                        submitMode="enter"
+                      />
+                      <ComposerPrimitive.Send
+                        data-mux-send=""
+                        className="mux-send"
+                        disabled={busy || !installedOf(tool) || !enabledOf(tool)}
+                        aria-label="Send message"
+                      >
+                        {busy ? 'Running…' : 'Send'}
+                      </ComposerPrimitive.Send>
+                    </ComposerPrimitive.Root>
+                  </div>
+                </ThreadPrimitive.ViewportFooter>
+              </ThreadPrimitive.Viewport>
             </ThreadPrimitive.Root>
-            <div data-mux-composer="">
-              <span data-mux-badge="">
-                {tool + (thread !== null && thread.cliSessionId !== undefined ? ` · ${thread.cliSessionId}` : '')}
-              </span>
-              {/* Plain form/button, not ComposerPrimitive: aui's action-button
-                  factory forces disabled when ITS internal composer is empty
-                  (we never bind ComposerPrimitive.Input), so Send could never
-                  enable. Enter submits the form too — single send path. */}
-              <form
-                data-mux-composer-root=""
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void send()
-                }}
-              >
-                <textarea
-                  data-mux-input=""
-                  value={prompt}
-                  placeholder="Message this CLI thread…"
-                  rows={1}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault()
-                      void send()
-                    }
-                  }}
-                />
-                <button type="submit" data-mux-send="" disabled={!canSend}>
-                  {busy ? 'Running…' : 'Send'}
-                </button>
-              </form>
-            </div>
           </AssistantRuntimeProvider>
         </div>
       </div>
