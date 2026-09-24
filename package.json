@@ -83,7 +83,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tsdown": "^0.23.0",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "dsh": {
     "bundle": {
