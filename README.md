@@ -3,137 +3,91 @@
 </p>
 
 <p align="center">
-  <strong>Talk to other coding CLIs from inside the DeepSeek Harness GUI — and keep the thread.</strong>
+  <strong>Talk to your other coding CLIs from inside the DeepSeek Harness GUI — without losing the thread.</strong>
 </p>
 
 <p align="center">
   <a href="#installation">Install</a> ·
+  <a href="#why">Why</a> ·
   <a href="#supported-clis">CLIs</a> ·
+  <a href="#try-it-in-2-minutes-no-credentials-needed">Try it offline</a> ·
   <a href="#architecture">Architecture</a> ·
-  <a href="#run-in-docker">Docker</a> ·
   <a href="#development">Dev</a> ·
   <a href="#license">License</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/FreePeak/dsh-mux/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/FreePeak/dsh-mux/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"/></a>
-  <img src="https://img.shields.io/badge/version-0.1.0-informational?style=flat-square" alt="Version"/>
-  <img src="https://img.shields.io/badge/dsh-plugin-external-blue?style=flat-square" alt="DSH plugin"/>
+  <img src="https://img.shields.io/npm/v/@freepeak/dsh-mux?style=flat-square&label=npm" alt="npm"/>
   <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square" alt="Node"/>
-  <img src="https://img.shields.io/badge/tests-28%20passing-brightgreen?style=flat-square" alt="Tests"/>
-  <img src="https://img.shields.io/badge/validated-docker-2ea44f?style=flat-square" alt="Docker validated"/>
+  <img src="https://img.shields.io/badge/tests-43%20passing-brightgreen?style=flat-square" alt="Tests"/>
+  <img src="https://img.shields.io/badge/assistant--ui-0.15-ff69b4?style=flat-square" alt="assistant-ui"/>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"/></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/FreePeak/dsh-mux/stargazers"><img src="https://img.shields.io/github/stars/FreePeak/dsh-mux?style=social" alt="Star dsh-mux"/></a>
 </p>
 
 ---
 
-## What it is
-
-**dsh-mux** is a [DeepSeek Harness](https://github.com/deepseek-ai) **external bundle**: a sidebar page, slash commands, a host tool, and a remote service that let you talk to other coding CLIs — Claude Code, OMP, Pi, Cursor, Agy, Command Code, opencode — **from the DSH web GUI**, with each conversation kept alive as a thread.
-
-Instead of switching terminals, open **Mux**, pick a CLI, type a follow-up, and the same CLI session continues where it left off (resume by the CLI's own session id). Stream output in real time, stop a turn in progress, or hand a session id to the model with the **mux** tool.
-
-> This is **not** a standalone server, not a HarnessRouter deployment, and not a live bidirectional PTY. It runs **one CLI process per turn**, resumed by session id.
-
 <p align="center">
-  <img src="docs/screenshots/03-mux-panel-discovery-strip.png" alt="Mux panel with discovery strip" width="820"/>
+  <img src="docs/screenshots/hero-mux-panel.png" alt="The Mux panel inside the DeepSeek Harness web GUI" width="900"/>
 </p>
 
-## Table of contents
+## What it is
 
-- [Installation](#installation)
-- [First run](#first-run)
-- [Run in Docker](#run-in-docker)
-- [Validation (container)](#validation-container)
-- [Supported CLIs](#supported-clis)
-- [Architecture](#architecture)
-- [How it works](#how-it-works)
-- [Configuration](#configuration)
-- [Development](#development)
-- [Brand assets](#brand-assets)
-- [Security](#security)
-- [Contributing](#contributing)
-- [Changelog](#changelog)
-- [License](#license)
+**dsh-mux** is a [DeepSeek Harness](https://github.com/deepseek-ai) **external bundle**. It adds a **Mux** page to the DSH web GUI that lets you talk to other coding CLIs — Claude Code, OMP, Pi, Cursor, Agy, Command Code, opencode — and **keeps the conversation as a thread**.
+
+Open **Mux**, pick a CLI, send a message. The next message in that thread **resumes the same CLI session** instead of starting over, so the CLI keeps its own context. The DSH agent can drive the same threads through the `mux` tool and the `/mux` + `/ask` commands.
+
+> **Scope, honestly:** one CLI process per turn, resumed by the CLI's own session id. It is not a live PTY — output arrives when the turn finishes rather than streaming token-by-token, and there is no in-panel cancel. Claude Code is the only adapter enabled today; the rest are detected and disabled until each has a proven answer parser.
+
+## Why
+
+You already have several coding agents. Running each in its own terminal means losing context every time you switch. dsh-mux keeps each CLI's session id, stores the turn history, and lets you — or your DSH agent — pick a thread back up later, from the same GUI you already live in.
 
 ## Installation
 
 ```bash
-# from a clone or release checkout
+# from a clone or release checkout, into the active DSH profile
 dsh plugin install /path/to/dsh-mux
 ```
 
-Installed into the active web profile (patch reload is live on that profile, so
-later edits to the bundle are picked up without a full restart).
-
-> Put the target CLI binaries (`claude`, `omp`, `pi`, `cursor`, `agy`,
-> `command-code`) on your `PATH`. `opencode` is tracked but reported as
-> **missing** until its binary appears.
-
-### Requirements
-
-| | |
-| --- | --- |
-| Node.js | **≥ 22** (build + tests) |
-| Host | DeepSeek Harness web profile (`dsh web`) |
-| Optional | Playwright (container drive script) |
+Requires **Node.js ≥ 22** and a DSH web profile (`dsh web`). Put the CLI binaries
+you want on your `PATH`.
 
 ## First run
 
-1. Start the GUI (`dsh web` prints `http://127.0.0.1:3081/?token=...`).
-2. Click **Mux** in the sidebar — the discovery strip shows which CLIs are installed.
-3. Type a message and hit **Send**. The CLI runs non-interactively (accept mode) and streams its reply into the panel and the DSH transcript.
-4. Type a follow-up — it resumes the same CLI session id rather than starting fresh.
+1. Start the GUI — `dsh web` prints `http://127.0.0.1:3081/?token=...`.
+2. Click **Mux** in the sidebar. The strip shows which CLIs are installed and which are enabled.
+3. Type a message, hit **Send**. The answer comes back in the panel.
+4. Type a follow-up — it resumes the same CLI session.
 
-From the composer:
+From the DSH composer:
 
 ```text
-/mux                  # open the Mux panel
+/mux                  # open the Mux page
 /mux claude say hi    # start a thread; result goes to the transcript
 /ask omp explain this # same thing, shorter name
 ```
 
-## Run in Docker
+## Try it in 2 minutes (no credentials needed)
 
-A self-contained container boots DSH with dsh-mux installed, including a
-**fixture `claude` CLI** (`docker/fixtures/claude`) that validates the full
-spawn → stdin → session-id → resume pipeline without model credentials:
+A self-contained Docker setup boots DSH with dsh-mux and a **fixture `claude` CLI**
+that exercises the full spawn → stdin → session-id → resume pipeline offline:
 
 ```bash
 docker compose -f docker/docker-compose.yml up --build -d
-docker compose -f docker/docker-compose.yml logs -f   # `dsh web:` line has the token
+docker compose -f docker/docker-compose.yml logs -f   # the `dsh web:` line has the token
 ```
 
-Open `http://127.0.0.1:3101/?token=...` (host loopback only — the harness
-refuses a wildcard bind, so an in-container relay forwards to its private
-`127.0.0.1:3099`).
+Then open `http://127.0.0.1:3101/?token=...` (host loopback only).
 
 | | |
 | --- | --- |
 | Re-seed profile | `FORCE_REINIT=1 docker compose -f docker/docker-compose.yml up -d` |
 | Full reset | `docker compose -f docker/docker-compose.yml down -v` |
-
-## Validation (container)
-
-[`scripts/drive.py`](scripts/drive.py) walks the container end-to-end over the
-harness wire API (workspace → session → `commands.execute` → panel) and
-captures:
-
-| Screenshot | Proves |
-| --- | --- |
-| [01 · boot / sidebar](docs/screenshots/01-boot-sidebar-mux-entry.png) | Container boots; client bundle loads; **Mux** entry renders |
-| [02 · commands](docs/screenshots/02-command-execution-ok.png) | `/mux` + `/ask claude` execute; fixture returns `mux · claude · exit 0` |
-| [03 · discovery](docs/screenshots/03-mux-panel-discovery-strip.png) | Panel + discovery strip via `remote.mux.discover()` |
-| [04 · thread turns](docs/screenshots/04-mux-panel-thread-turns.png) | Stored thread shows prompt / answer turns |
-
-Full transcript (including the **resume proof** — a second send on the same
-thread passes `cliSessionId` to `--resume` and the fixture echoes it back):
-[`docs/screenshots/drive.log`](docs/screenshots/drive.log).
-
-```bash
-python3 scripts/drive.py "http://127.0.0.1:3101/?token=..."   # needs Playwright
-python3 scripts/shot.py  "http://127.0.0.1:3101/?token=..."    # onboarding walkthrough
-```
 
 ## Supported CLIs
 
@@ -150,30 +104,29 @@ non-interactive accept mode so a turn can never block on a prompt nobody can see
 | **Command Code** | `-p --output-format json --skip-onboarding` | `--resume <id> -p` | detected, disabled |
 | **opencode** | _(binary missing)_ | _(n/a)_ | missing, disabled |
 
-Only **Claude Code** is enabled for send/select in this build
-(`ENABLED_ADAPTER_IDS`): it is the first adapter with a proven answer parser —
-Claude's `stream-json` NDJSON is reduced to the final result text before it is
-stored as the thread answer. The other adapters still show up in discovery
-(installed/missing) but are disabled until each gets the same treatment.
+Only **Claude Code** is enabled for send/select (`ENABLED_ADAPTER_IDS`). Its
+`stream-json` NDJSON is parsed down to the final result text before it is stored
+as the thread answer — that parsing is why it is first. Adding another CLI means
+giving it the same answer-parsing treatment; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Architecture
 
 ```text
- You ──► DSH Web GUI
-            │
-     ┌──────┴──────────┐
-     ▼                  ▼
- Mux page            DSH agent
- (thread list,       (/mux, /ask,
-  composer,          tool mux)
-  Send / Stop)
-     │                  │
-     └────────┬─────────┘
-              ▼
-         dsh-mux host ──► Thread store (cliSessionId)
-              │
-              ▼
-   Coding CLIs (one process per turn)
+  You ──► DSH Web GUI
+             │
+      ┌──────┴──────────┐
+      ▼                  ▼
+  Mux page            DSH agent
+  (thread rail,       (/mux, /ask,
+   composer,           tool mux)
+   Send)
+      │                  │
+      └────────┬─────────┘
+               ▼
+          dsh-mux host ──► Thread store (cliSessionId)
+               │
+               ▼
+    Coding CLIs (one process per turn)
 ```
 
 Interactive diagrams:
@@ -187,18 +140,19 @@ Interactive diagrams:
 - **One CLI process per turn.** Resume is driven by the CLI's own session id —
   uniform across all seven targets without a long-lived RPC pipe.
 - **Fail-closed.** Timeouts, empty stdout, or unknown IDs produce clear errors.
-  Stop kills the running process (SIGTERM → SIGKILL).
+  A host-side cancel kills the process (SIGTERM → SIGKILL).
 - **Threads persist in JSON** under the profile data dir. Deletion removes the
   mux record only — the CLI's own session files are untouched.
 - **The model can drive it.** Tool **mux** accepts `{ tool, prompt, threadId }`
   so an agent can start or continue a thread inside a larger task.
-- **Host remote + browser mount.** The page mounts a hand-authored typert
-  contribution (`ctx.remote.$mount`) and reads via `ctx.get('remote.mux')`.
+- **Built on assistant-ui primitives.** The panel is `ExternalStoreRuntime` plus
+  `Thread` / `Composer` / `Message` / `ActionBar` primitives, and it inherits the
+  host chat's own theme tokens, so it looks native in light and dark.
 
 ## How it works
 
 1. `runTurn` spawns the chosen CLI with print args + permission-mode flag.
-2. The prompt is written on **stdin**; stdin is closed; stdout/stderr stream.
+2. The prompt is written on **stdin**; stdin is closed; stdout/stderr are captured.
 3. A session id is parsed from the CLI output and stored on the thread.
 4. The next turn feeds that id through the CLI's resume flag.
 5. Every result carries a header: `mux · claude · 4.2s · exit 0`.
@@ -221,24 +175,22 @@ See `src/plugin.ts` for the live schema.
 
 ```bash
 npm install
-npm test          # 28 tests, offline
-npm run build     # tsdown → lib/*.mjs
+npm test             # 43 tests, offline, no model credentials needed
+npm run build        # tsdown → lib/*.mjs
+npm run build:client # esbuild → client.js (the ./client export)
 ```
 
 | Script | Purpose |
 | --- | --- |
 | `test` | `node --experimental-strip-types --test test/*.test.ts` |
 | `build` | Bundle `src/index.ts` + `src/remote.ts` into `lib/` |
+| `build:client` | Bundle `web/` into the browser `./client` export |
 
 ### CI
 
-Every push and pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
-`npm ci` → unit tests → build → artifact gates. While the repository is
-**private**, jobs run on a self-hosted macOS runner labelled `dsh-mux`
-(`~/actions-runners/dsh-mux`, launchd service) so they do not burn the org's
-limited hosted Actions minutes. If the repository is made public, switch
-`runs-on` back to `ubuntu-latest` **before** opening it — fork PR code must
-never execute on a maintainer machine.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and
+pull request: `npm ci` → unit tests → build → artifact gates. The suite is fully
+offline — it needs no CLI binaries and no harness profile.
 
 ### Project layout
 
@@ -247,19 +199,21 @@ dsh-mux/
 ├── assets/              # logo, mark, favicon, social card
 ├── package.json         # dsh.bundle + dsh.client, exports (./, ./remote, ./client)
 ├── cordis.patch.yml     # rows: dsh-mux + dsh-mux-remote
-├── client.js            # browser: sidebar + panel + remote contribution
+├── client.js            # built browser bundle (generated — edit web/ instead)
+├── web/                 # client source: entry.tsx + tokens.css + esbuild build
 ├── docker/              # Dockerfile, compose, entrypoint, fixture claude
-├── scripts/drive.py     # container validation + screenshots
+├── scripts/             # container drive + screenshot helpers, release script
 ├── src/
-│   ├── adapters.ts      # seven CLI specs
+│   ├── adapters.ts      # seven CLI specs + the enablement allowlist
 │   ├── discovery.ts     # PATH strip
-│   ├── run.ts           # spawn / stream / cap / kill
+│   ├── parse-answer.ts  # stream-json → answer text
+│   ├── run.ts           # spawn / capture / cap / kill
 │   ├── threads.ts       # JSON thread store
 │   ├── commands.ts      # /mux + /ask parser
 │   ├── plugin.ts        # host tool + commands (no default export)
 │   ├── remote.ts        # host remote (hand-applied @Remote markers)
 │   └── index.ts         # cordis entry (named exports only)
-├── test/                # 28 tests + artifacts gates
+├── test/                # 43 tests + artifact gates
 └── docs/                # PRD, diagrams, screenshots, UI sketch
 ```
 
@@ -269,6 +223,7 @@ Hard-won constraints (also in [CONTRIBUTING.md](CONTRIBUTING.md)):
 - No raw `@Remote` in shipped JS — hand-apply markers.
 - schemastery: `.default()`, not `.optional()`.
 - Browser: `ctx.get('remote.mux')`, not `ctx.remote.mux`.
+- The client bundle is **generated** — edit `web/`, run `npm run build:client`.
 
 ## Brand assets
 
@@ -285,21 +240,23 @@ green continuity dot — many CLIs in, one resumed thread out. Details:
 
 ## Security
 
-Spawning local CLIs is intentional and constrained: prompt on stdin (never
-argv), fail-closed turns, real time/output ceilings. See
+Spawning local CLIs is intentional and constrained: the prompt goes on stdin
+(never argv), turns fail closed, and time/output ceilings are real. See
 [SECURITY.md](SECURITY.md) for the supported versions line and how to report
 vulnerabilities **privately**.
 
 ## Contributing
 
-Contributions are welcome. Please open an issue before large changes. Read
-[CONTRIBUTING.md](CONTRIBUTING.md) and the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+Contributions are welcome — the easiest high-value contribution is **another CLI
+adapter with a proven answer parser** (see [Supported CLIs](#supported-clis)).
+Please open an issue before large changes. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 PR checklist (short form):
 
-- [ ] `npm test` green (28)
+- [ ] `npm test` green (43)
 - [ ] `npm run build` if host/remote sources changed
+- [ ] `npm run build:client` if `web/` changed
 - [ ] No new runtime dependency without justification
 - [ ] `CHANGELOG.md` updated when behaviour changes
 
