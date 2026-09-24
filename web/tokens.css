@@ -1,0 +1,508 @@
+/**
+ * Mux panel — inherits the host DSH chat's design system.
+ *
+ * The panel is a `main` slot inside the host web app, so it must look native:
+ * every colour, font and surface comes from the host's `--dsw-*` / `--dsh-*`
+ * tokens, which the host already publishes (ui-theme `boot-theme.ts`) and
+ * re-resolves for light / dark. Nothing here re-declares a palette — a hard
+ * dark theme painted inside the host's light canvas was what made this panel
+ * look foreign.
+ *
+ * Geometry is copied from the host's own chat:
+ *   MessageItem.module.css  → user turn is a 22px-radius bubble, assistant
+ *                              text is plain on the canvas (no bubble)
+ *   InputBar.module.css     → composer is a 22px card, --dsw-specific-input-
+ *                              major fill, --dsw-elevation-soft shadow, l2 hairline
+ *   ChatView.module.css     → centred column, 16px scroll padding
+ *
+ * Only mux-specific structure lives here: the thread rail, the CLI chip strip,
+ * and the session badge. Every token is written with a fallback so the panel
+ * still renders if the host has not published one.
+ *
+ * Scoped under [data-mux-panel] — nothing leaks into the host.
+ */
+
+/* ── panel shell ──────────────────────────────────────────────────── */
+
+[data-mux-panel] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  /* Transparent so the host canvas (and its light/dark switch) shows through. */
+  background: transparent;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.5;
+}
+
+[data-mux-panel] * { box-sizing: border-box; }
+[data-mux-panel] ::selection { background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 20%, transparent); }
+
+/* ── CLI chip strip ───────────────────────────────────────────────── */
+
+[data-mux-strip] {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 0.04));
+}
+
+[data-mux-chip] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2, rgb(0 0 0 / 0.1));
+  border-radius: 14px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, inherit);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    border-color var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+[data-mux-chip]:hover:not([disabled]) {
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  border-color: var(--dsw-alias-border-l3, rgb(0 0 0 / 0.12));
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+[data-mux-chip][data-active="true"] {
+  background: var(--dsw-alias-state-business-tertiary, #e4edfd);
+  border-color: transparent;
+  color: var(--dsw-alias-state-business-primary, #4176e6);
+}
+
+[data-mux-chip][data-installed="false"],
+[data-mux-chip][data-enabled="false"] {
+  color: var(--dsw-alias-label-caption, #adb2b8);
+  cursor: not-allowed;
+}
+
+[data-mux-dot] {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-caption, #adb2b8);
+  flex: none;
+}
+
+[data-mux-dot][data-on="true"][data-enabled="true"] {
+  background: var(--dsw-alias-state-warn-primary, #f59e0b);
+}
+
+[data-mux-dot][data-on="true"][data-enabled="false"] {
+  background: var(--dsw-alias-label-caption, #adb2b8);
+}
+
+/* ── body: session rail + main ────────────────────────────────────── */
+
+[data-mux-body] {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+[data-mux-threads] {
+  width: 248px;
+  flex: none;
+  border-right: 1px solid var(--dsw-alias-border-l1, rgb(0 0 0 / 0.04));
+  background: var(--dsw-specific-sidebar-fill, rgb(0 0 0 / 0.02));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-mux-threads-head] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-size: 12px;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  background: var(--dsw-specific-sidebar-fill, rgb(0 0 0 / 0.02));
+  z-index: 1;
+}
+
+[data-mux-new],
+[data-mux-delete] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, inherit);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+[data-mux-new]:hover,
+[data-mux-delete]:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+[data-mux-delete] {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+/* Never hover-only: keyboard focus reveals it too. */
+[data-mux-thread]:hover [data-mux-delete],
+[data-mux-thread]:focus-within [data-mux-delete],
+[data-mux-delete]:focus-visible { opacity: 1; }
+
+[data-mux-thread] {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+[data-mux-thread]:hover { background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03)); }
+
+[data-mux-thread][data-active="true"] {
+  background: var(--dsw-alias-state-business-tertiary, #e4edfd);
+  border-left-color: var(--dsw-alias-state-business-primary, #4176e6);
+}
+
+[data-mux-thread-title] {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+[data-mux-resume] {
+  display: inline-flex;
+  align-items: center;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+}
+
+[data-mux-thread-preview] {
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-size: 12px;
+  font-family: var(--ds-font-family-code, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-mux-main] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+[data-mux-notice] {
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ec1313) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary, #ec1313);
+  font-size: 13px;
+}
+
+[data-mux-notice][data-kind="info"] {
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-secondary, inherit);
+}
+
+/* ── thread surface ───────────────────────────────────────────────── */
+
+[data-mux-turns] {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Host ChatView: 16px around the centred column. */
+  padding: 16px;
+  scroll-padding-bottom: 88px;
+  scrollbar-gutter: stable;
+}
+
+/* One centred content column, as the host does. */
+[data-mux-turns] > * { max-width: var(--dsh-chat-content-width, 100%); margin-inline: auto; }
+
+.mux-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: auto;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+}
+
+.mux-empty-title {
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.mux-empty-hint { font-size: 13px; }
+
+/* Message root: host pattern is a column so actions sit under the bubble. */
+[data-mux-turn] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.mux-msg-body {
+  color: var(--dsw-alias-label-primary, inherit);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mux-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+/* Assistant: plain on the canvas, exactly like the host's markdown. */
+[data-mux-turn][data-role="assistant"] { align-items: flex-start; }
+
+/* User: the host's 22px bubble. */
+[data-mux-turn][data-role="user"] { align-items: flex-end; }
+
+[data-mux-turn][data-role="user"] .mux-msg-body {
+  max-width: min(calc(var(--dsh-chat-content-width, 748px) * 0.702), 82%);
+  padding: 10px 16px;
+  border-radius: 22px;
+  background: var(--dsw-specific-bubble, rgb(0 0 0 / 0.04));
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+[data-mux-turn][data-role="user"] .mux-text {
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.6;
+}
+
+[data-mux-turn][data-mux-error="true"],
+[data-mux-turn][data-is-error="true"] {
+  color: var(--dsw-alias-state-error-primary, #ec1313);
+}
+
+.mux-msg-error:not(:empty) {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ec1313) 8%, transparent);
+  font-size: 13px;
+}
+
+/* ── message actions ──────────────────────────────────────────────── */
+
+.mux-actionbar {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--ds-transition-duration, 0.2s) ease;
+}
+
+[data-mux-turn]:hover .mux-actionbar,
+[data-mux-turn]:focus-within .mux-actionbar { opacity: 1; }
+
+.mux-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast, 0.1s) ease,
+    color var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+.mux-action:hover:not([disabled]) {
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+.mux-action svg { width: 13px; height: 13px; }
+.mux-action-done { display: none; }
+.mux-action[data-copied] .mux-action-copy { display: none; }
+.mux-action[data-copied] .mux-action-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dsw-alias-state-warn-primary, #f59e0b);
+}
+.mux-action[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* ── scroll to bottom ─────────────────────────────────────────────── */
+
+.mux-scroll-bottom {
+  position: sticky;
+  bottom: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--dsw-elevation-panel, rgb(0 0 0 / 0.06));
+  box-shadow: var(--dsw-elevation-panel, none);
+  color: var(--dsw-alias-label-secondary, inherit);
+  cursor: pointer;
+  margin: 0 auto;
+}
+
+.mux-scroll-bottom:hover:not([disabled]) { color: var(--dsw-alias-label-primary, inherit); }
+.mux-scroll-bottom svg { width: 14px; height: 14px; }
+.mux-scroll-bottom[disabled] { opacity: 0; pointer-events: none; }
+
+/* ── composer: the host's InputBar card ───────────────────────────── */
+
+.mux-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 4px 16px 8px;
+}
+
+[data-mux-composer] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: var(--dsh-chat-content-width, 100%);
+  margin-inline: auto;
+}
+
+[data-mux-composer-root] {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 22px;
+  background: var(--dsw-specific-input-major, #fff);
+  box-shadow: var(--dsw-elevation-soft, none),
+    0 0 0 0.5px var(--dsw-alias-border-l2, rgb(0 0 0 / 0.1));
+  font-size: var(--dsh-content-font-size, 14px);
+  transition: box-shadow var(--ds-transition-duration, 0.2s) ease;
+}
+
+[data-mux-composer-root]:focus-within {
+  box-shadow: var(--dsw-elevation-soft, none),
+    0 0 0 0.5px var(--dsw-alias-state-business-primary, #4176e6);
+}
+
+[data-mux-input],
+[data-mux-composer] textarea {
+  flex: 1;
+  resize: none;
+  min-height: 24px;
+  max-height: 180px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: 1.6;
+}
+
+[data-mux-composer] textarea::placeholder {
+  color: var(--dsw-alias-label-tertiary, #81858c);
+}
+
+[data-mux-send],
+[data-mux-composer] button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--dsw-alias-state-business-primary, #4176e6);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--ds-transition-duration-fast, 0.1s) ease;
+}
+
+[data-mux-send]:hover:not([disabled]) { opacity: 0.9; }
+[data-mux-send][disabled],
+[data-mux-composer] button[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+[data-mux-badge] {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 0.03));
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 11px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Icons inherit colour; single stroke weight like the host. */
+[data-mux-panel] svg {
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mux-panel] *,
+  [data-mux-panel] *::before,
+  [data-mux-panel] *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

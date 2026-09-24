@@ -13,11 +13,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 prompt=$(cat)
+# Multi-line stream-json shaped like real Claude Code: system/init noise,
+# an assistant text frame, then a final result envelope carrying the answer.
 if [ -n "$resume_id" ]; then
-  echo "fixture claude resumed session ${resume_id}"
-  echo "{\"type\":\"result\",\"session_id\":\"${resume_id}\"}"
+  sid="$resume_id"
+  answer="fixture claude resumed session ${resume_id}"
 else
   sid="sess_fixture_$(date +%s)"
-  echo "fixture claude received: ${prompt}"
-  echo "{\"type\":\"result\",\"session_id\":\"${sid}\"}"
+  answer="fixture claude received: ${prompt}"
 fi
+printf '%s\n' "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":\"${sid}\"}"
+printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"${answer}\"}]},\"session_id\":\"${sid}\"}"
+printf '%s\n' "{\"type\":\"result\",\"subtype\":\"success\",\"result\":\"${answer}\",\"session_id\":\"${sid}\",\"is_error\":false}"

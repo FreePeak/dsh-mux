@@ -9,10 +9,19 @@
 
 export { apply, name, inject, sendTurn, turnHeader } from './plugin.ts'
 export type { Config } from './plugin.ts'
-export { ADAPTERS, ADAPTER_IDS, adapterFor, firstTurnArgv, resumeTurnArgv, scanSessionId } from './adapters.ts'
+export {
+  ADAPTERS,
+  ADAPTER_IDS,
+  adapterFor,
+  firstTurnArgv,
+  resumeTurnArgv,
+  scanSessionId,
+  ENABLED_ADAPTER_IDS,
+} from './adapters.ts'
 export type { CliSpec } from './adapters.ts'
 export { binOnPath, discover, pathEntries } from './discovery.ts'
 export type { AdapterStatus } from './discovery.ts'
+export { parseClaudeStreamJson } from './parse-answer.ts'
 export { runTurn } from './run.ts'
 export type { RunTurnOptions, RunTurnResult } from './run.ts'
 export { ThreadStore, hasStore } from './threads.ts'

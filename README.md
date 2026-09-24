@@ -142,13 +142,19 @@ non-interactive accept mode so a turn can never block on a prompt nobody can see
 
 | CLI | First turn | Resume turn | Status |
 | --- | --- | --- | --- |
-| **Claude Code** | `-p --output-format stream-json` | `--resume <id> -p` | ready |
-| **OMP** | `-p --mode json` | `--resume <id> -p` | ready |
-| **Pi** | `-p --mode json` | `--resume <id> -p` | ready |
-| **Cursor** | `agent -p --output-format stream-json` | `agent --resume <id> -p` | ready |
-| **Agy** | `-p --output-format stream-json` | `--conversation <id> -p` | ready |
-| **Command Code** | `-p --output-format json --skip-onboarding` | `--resume <id> -p` | ready |
-| **opencode** | _(binary missing)_ | _(n/a)_ | missing |
+| **Claude Code** | `-p --output-format stream-json` | `--resume <id> -p` | **enabled** |
+| **OMP** | `-p --mode json` | `--resume <id> -p` | detected, disabled |
+| **Pi** | `-p --mode json` | `--resume <id> -p` | detected, disabled |
+| **Cursor** | `agent -p --output-format stream-json` | `agent --resume <id> -p` | detected, disabled |
+| **Agy** | `-p --output-format stream-json` | `--conversation <id> -p` | detected, disabled |
+| **Command Code** | `-p --output-format json --skip-onboarding` | `--resume <id> -p` | detected, disabled |
+| **opencode** | _(binary missing)_ | _(n/a)_ | missing, disabled |
+
+Only **Claude Code** is enabled for send/select in this build
+(`ENABLED_ADAPTER_IDS`): it is the first adapter with a proven answer parser —
+Claude's `stream-json` NDJSON is reduced to the final result text before it is
+stored as the thread answer. The other adapters still show up in discovery
+(installed/missing) but are disabled until each gets the same treatment.
 
 ## Architecture
 

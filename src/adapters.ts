@@ -7,6 +7,8 @@
  * @module dsh-mux/adapters
  */
 
+import { parseClaudeStreamJson } from './parse-answer.ts'
+
 export interface CliSpec {
   /** Adapter id, used by the tool / commands / threads. */
   readonly id: string
@@ -28,7 +30,20 @@ export interface CliSpec {
    * single-turn rather than failing.
    */
   readonly parseSessionId: (stdout: string) => string | undefined
+  /**
+   * Parse the human-readable answer out of stdout (NDJSON stream, single
+   * JSON object, or plain text). Undefined means "use raw stdout".
+   * Only Claude implements this today; others fall through until proven.
+   */
+  readonly parseAnswer?: (stdout: string) => string | undefined
 }
+
+/**
+ * Adapters the panel/tool may actually send. Discovery still reports the
+ * rest (so install status is visible), but send/select is blocked until
+ * each has a tested answer parser — only Claude Code ships enabled first.
+ */
+export const ENABLED_ADAPTER_IDS: ReadonlySet<string> = new Set(['claude'])
 
 /**
  * Best-effort session-id extraction: walk the stdout lines, JSON-parse any
@@ -74,6 +89,7 @@ export const ADAPTERS: readonly CliSpec[] = [
     resumeFlag: ['--resume'],
     permissionArgs: ['--permission-mode', 'acceptEdits'],
     parseSessionId: scanSessionId,
+    parseAnswer: parseClaudeStreamJson,
   },
   {
     id: 'omp',

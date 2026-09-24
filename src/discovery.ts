@@ -7,6 +7,7 @@
 
 import { accessSync, constants } from 'node:fs'
 import { delimiter, join } from 'node:path'
+import { ENABLED_ADAPTER_IDS } from './adapters.ts'
 import type { CliSpec } from './adapters.ts'
 
 /** The PATH entries to search, in order. */
@@ -38,6 +39,8 @@ export interface AdapterStatus {
   readonly installed: boolean
   /** Resolved path, when installed. */
   readonly path?: string
+  /** Whether this adapter is in the enabled allowlist (Claude first). */
+  readonly enabled: boolean
 }
 
 /**
@@ -52,8 +55,9 @@ export function discover(
   const dirs = pathEntries(env)
   return specs.map(spec => {
     const path = binOnPath(spec.bin, dirs)
+    const enabled = ENABLED_ADAPTER_IDS.has(spec.id)
     return path === undefined
-      ? { id: spec.id, installed: false }
-      : { id: spec.id, installed: true, path }
+      ? { id: spec.id, installed: false, enabled }
+      : { id: spec.id, installed: true, path, enabled }
   })
 }

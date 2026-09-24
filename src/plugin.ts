@@ -16,7 +16,14 @@ import type { Context } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView } from '@deepseek-ai/dsh-tools'
-import { ADAPTERS, ADAPTER_IDS, adapterFor, firstTurnArgv, resumeTurnArgv } from './adapters.ts'
+import {
+  ADAPTERS,
+  ADAPTER_IDS,
+  adapterFor,
+  firstTurnArgv,
+  resumeTurnArgv,
+  ENABLED_ADAPTER_IDS,
+} from './adapters.ts'
 import { binOnPath, discover, pathEntries } from './discovery.ts'
 import { runTurn } from './run.ts'
 import type { RunTurnResult } from './run.ts'
@@ -93,6 +100,13 @@ export async function sendTurn(
       threadId: options.threadId ?? '',
     }
   }
+  if (!ENABLED_ADAPTER_IDS.has(spec.id)) {
+    return {
+      header: `mux · ${spec.id} · disabled`,
+      text: `"${spec.id}" is disabled in this build; only ${[...ENABLED_ADAPTER_IDS].join(', ')} is enabled. Nothing was spawned.`,
+      threadId: options.threadId ?? '',
+    }
+  }
   const binPath = binOnPath(spec.bin, pathEntries())
   if (binPath === undefined) {
     return {
@@ -133,14 +147,16 @@ export async function sendTurn(
     return { header: turnHeader(spec.id, result.durationMs, result.exitCode), text, threadId }
   }
   const sessionId = spec.parseSessionId(result.text)
+  const parsed = spec.parseAnswer?.(result.text)
+  const answer = parsed !== undefined && parsed.length > 0 ? parsed : result.text
   services.store.append(
     threadId,
-    { role: 'answer', text: result.text, at: Date.now() },
+    { role: 'answer', text: answer, at: Date.now() },
     sessionId,
   )
   const text = result.truncated
-    ? `${result.text}\n(output truncated at the 1 MiB cap)`
-    : result.text
+    ? `${answer}\n(output truncated at the 1 MiB cap)`
+    : answer
   return {
     header: turnHeader(spec.id, result.durationMs, result.exitCode),
     text,

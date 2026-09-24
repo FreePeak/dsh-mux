@@ -62,8 +62,32 @@ void describe('release', () => {
     const source = readFileSync(join(root, 'CHANGELOG.md'), 'utf8')
     const repoUrl = 'https://github.com/FreePeak/dsh-mux'
 
+    // Hermetic fixture: the live CHANGELOG gains a `[0.2.0]` section the
+    // moment the release pipeline runs (via a `[skip ci]` commit that never
+    // re-runs this test), after which rolling into that version is a no-op.
+    // Pinning the source keeps this test green across releases.
+    const fixture = [
+      '# Changelog',
+      '',
+      '## [Unreleased]',
+      '',
+      '### Added',
+      '',
+      '- Brand assets under `assets/` (logo, mark, favicon, social card).',
+      '',
+      '## [0.1.0] — 2026-09-23',
+      '',
+      '### Added',
+      '',
+      '- DeepSeek Harness external bundle.',
+      '',
+      '[Unreleased]: https://github.com/FreePeak/dsh-mux/compare/v0.1.0...HEAD',
+      '[0.1.0]: https://github.com/FreePeak/dsh-mux/releases/tag/v0.1.0',
+      '',
+    ].join('\n')
+
     void it('rolls [Unreleased] into the new version and fixes the link refs', () => {
-      const rolled = rollChangelog(source, '0.2.0', '2026-09-24', repoUrl)
+      const rolled = rollChangelog(fixture, '0.2.0', '2026-09-24', repoUrl)
       const unreleased = /^## \[Unreleased\]\n(.*?)^## \[/ms.exec(rolled)
       assert.ok(unreleased, 'rolled file keeps an Unreleased section')
       assert.equal(unreleased[1].trim(), '', 'Unreleased is emptied by the roll')
