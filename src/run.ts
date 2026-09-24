@@ -194,10 +194,18 @@ export function runTurn(options: RunTurnOptions): Promise<RunTurnResult> {
         truncated,
       })
     })
+    // A CLI that exits before draining stdin (bad flags, auth failure) makes
+    // the pipe fail asynchronously: `stdin.write` itself does not throw, the
+    // socket emits 'error' with EPIPE. Without a listener that is an unhandled
+    // 'error' event and takes the process down — which is how the first
+    // Linux CI run failed while the macOS runner stayed green. The child's own
+    // exit code and stderr are the real signal, so treat this as noise and let
+    // the 'close' handler settle the result.
+    child.stdin.on('error', () => { /* child went away first — expected */ })
     try {
-      child.stdin.write(options.prompt)
-      child.stdin.end()
+      child.stdin.write(options.prompt, () => { child.stdin.end() })
     } catch (error) {
+      try { child.stdin.destroy() } catch { /* already gone */ }
       finish({
         ok: false,
         reason: 'spawn',
