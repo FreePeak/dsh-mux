@@ -77,7 +77,7 @@
   "devDependencies": {
     "@assistant-ui/react": "^0.15.21",
     "@assistant-ui/styles": "^0.3.7",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
     "esbuild": "^0.28.2",
     "react": "^19.3.0",
