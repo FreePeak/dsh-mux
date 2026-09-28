@@ -75,7 +75,7 @@
     }
   },
   "devDependencies": {
-    "@assistant-ui/react": "^0.15.21",
+    "@assistant-ui/react": "^0.15.22",
     "@assistant-ui/styles": "^0.3.7",
     "@types/node": "^22.0.0",
     "@types/react": "^19.3.0",
