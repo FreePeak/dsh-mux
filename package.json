@@ -75,14 +75,14 @@
     }
   },
   "devDependencies": {
-    "@assistant-ui/react": "^0.15.21",
+    "@assistant-ui/react": "^0.15.29",
     "@assistant-ui/styles": "^0.3.7",
     "@types/node": "^22.0.0",
     "@types/react": "^19.3.0",
     "esbuild": "^0.28.2",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tsdown": "^0.23.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsdown": "^0.23.1",
     "typescript": "^5.8.0"
   },
   "dsh": {
